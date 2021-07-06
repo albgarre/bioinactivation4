@@ -2,6 +2,12 @@
 library(shiny)
 library(bs4Dash)
 
+## Source the modules
+
+list.files("./R") %>%
+  map(., ~ paste0("./R/", .)) %>%
+  map(source)
+
 ##
 
 ui <- dashboardPage(
