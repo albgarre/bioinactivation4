@@ -49,8 +49,13 @@ ui <- dashboardPage(
       id = "fit_menu",
       sidebarHeader("Model fitting"),
       menuItem(
-        "Two step",
-        tabName = "fit_2step",
+        "Primary model",
+        tabName = "fit_primary",
+        icon = icon("sliders")
+      ),
+      menuItem(
+        "Secondary model",
+        tabName = "fit_secondary",
         icon = icon("sliders")
       ),
       menuItem(
@@ -103,8 +108,12 @@ ui <- dashboardPage(
         stocpred_module_ui("module_stocpred")
       ),
       tabItem(
-        tabName = "fit_2step",
-        fit2step_module_ui("module_2step")
+        tabName = "fit_primary",
+        "Primary model"
+      ),
+      tabItem(
+        tabName = "fit_secondary",
+        "Secondary model"
       ),
       tabItem(
         tabName = "fit_1step",
