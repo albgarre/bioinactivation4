@@ -3,6 +3,9 @@ library(shiny)
 library(bs4Dash)
 library(tidyverse)
 
+library(thematic)
+thematic_shiny()
+
 ## Source the modules
 
 list.files("./R") %>%

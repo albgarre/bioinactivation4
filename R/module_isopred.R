@@ -112,6 +112,60 @@ isopred_module_server <- function(id) {
 
     ## Predictions -------------------------------------------------------------
 
+    prediction_map <- list(
+
+      Bigelow = function(p, t) {
+
+        p <- as.list(p)
+
+        p$logN0 - t/p$D
+
+      },
+
+      Mafart = function(p, t) {
+
+        p <- as.list(p)
+
+        p$logN0 - (t/p$delta)^p$p
+
+      },
+
+      Geeraerd = function(p, t) {
+
+        p <- as.list(p)
+
+        k <- log(10)/p$D
+
+        p$logNres + log10(( (10^(p$logN0-p$logNres)-1)*exp(k*p$SL) )/(exp(k*t) + exp(k*p$SL) - 1) + 1)
+
+      },
+
+      Peleg = function(p, t) {
+
+        p <- as.list(p)
+
+        p$logN0 - p$b * t^p$n
+
+      },
+
+      # Metselaar = function(p, t) {
+      #
+      #   p <- as.list(p)
+      #
+      #   p$logN0 - p$Delta*(t/p$Delta/p$D)^p$p
+      #
+      # }
+      Trilinear = function(p, t) {
+        p <- as.list(p)
+
+        tibble(logN = p$logN0 - (t - p$SL)/p$D) %>%
+          mutate(logN = ifelse(t < p$SL, p$logN0, logN),
+                 logN = ifelse(logN < p$logNres, p$logNres, logN)) %>%
+          pull(logN)
+      }
+
+    )
+
     my_predictions <- reactiveVal()
 
     observeEvent(input$go, {
