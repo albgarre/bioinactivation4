@@ -109,7 +109,7 @@ primary_module_server <- function(id) {
                numericInput(NS(id, par_name), par_data$label, par_data$value)
         ),
         column(6,
-               # awesomeCheckbox(NS(id, paste0(par_name, "_fixed")), "Fixed?", par_data$fixed)
+               awesomeCheckbox(NS(id, paste0(par_name, "_fixed")), "Fixed?", par_data$fixed)
         )
       )
 
@@ -182,14 +182,16 @@ primary_module_server <- function(id) {
 
     )
 
-    get_residuals <- function(parameters, data, model) {
+    get_residuals <- function(parameters, data, model, known) {
 
-      pred <- prediction_map[[model]](parameters, data$time)
+      pred <- prediction_map[[model]](c(parameters, known), data$time)
       res <- pred - data$logN
 
       res
 
     }
+
+    # get_residuals(c(D = 5), data = d, "Bigelow", c(logN0 = 6))
 
     my_fit <- reactiveVal()
 
@@ -200,17 +202,25 @@ primary_module_server <- function(id) {
       par_names <- model_map[[input$model]]
 
       p <- list()
+      known <- list()
 
       for (i in par_names) {
-        p[[i]] <- input[[i]]
+
+        if (isTRUE(input[[paste0(i, "_fixed")]])) {
+          known[[i]] <- input[[i]]
+        } else {
+          p[[i]] <- input[[i]]
+        }
+
       }
-      names(p) <- par_names
+      # names(p) <- par_names
 
       p <- unlist(p)
+      known <- unlist(known)
 
       ## Fit the model
 
-      out <- modFit(get_residuals, p, data = my_data(), model = input$model)
+      out <- modFit(get_residuals, p, data = my_data(), model = input$model, known = known)
       my_fit(out)
     })
 
@@ -226,13 +236,32 @@ primary_module_server <- function(id) {
         need(my_fit(), "Fit the model first")
       )
 
+      ## Get the known pars
+
+      par_names <- model_map[[input$model]]
+
+      known <- list()
+
+      for (i in par_names) {
+
+
+        if (isTRUE(input[[paste0(i, "_fixed")]])) {
+          known[[i]] <- input[[i]]
+        }
+
+      }
+
+      known <- unlist(known)
+
+      ## Make the plot
+
       my_data() %>%
         # mutate(pred = prediction_map[[input$model]](time, my_fit()$par)) %>%
         ggplot() +
         geom_point(aes(x=time, y = logN)) +
         geom_line(aes(x, y),
                   data = tibble(x = seq(0, max(my_data()$time), length = 1000),
-                                y = prediction_map[[input$model]](my_fit()$par, x))
+                                y = prediction_map[[input$model]](c(my_fit()$par, known), x))
                   )
         # geom_line(aes(x = time, y = pred))
 

@@ -1,6 +1,7 @@
 
 library(shiny)
 library(bs4Dash)
+library(tidyverse)
 
 ## Source the modules
 
@@ -109,7 +110,7 @@ ui <- dashboardPage(
       ),
       tabItem(
         tabName = "fit_primary",
-        "Primary model"
+        primary_module_ui("module_primary")
       ),
       tabItem(
         tabName = "fit_secondary",
