@@ -11,9 +11,45 @@ isopred_module_ui <- function(id) {
 
   tagList(
     fluidRow(
-      column(12,
-             h3("Isothermal predictions")
+      column(6,
+             bs4Card(
+               title = "Model parameters",
+               width = 12,
+               footer = tagList(actionBttn(NS(id, "go"), "Make prediction"),
+                                actionBttn(NS(id, "clean"), "Clear")
+                                ),
+               pickerInput(NS(id, "model"), "Model",
+                           choices = c("Bigelow", "Mafart", "Peleg", # "Metselaar",
+                                       "Geeraerd", "Trilinear")
+               ),
+               uiOutput(NS(id, "parameters")),
+               numericInput(NS(id, "max_time"), "Treatment time (min)", 10, min = 0),
+               textInput(NS(id, "pred_name"), "Prediction label", "Prediction 1")
              )
+      ),
+      column(6,
+             bs4Card(
+               title = "Model predictions",
+               width = 12,
+               plotOutput(NS(id, "plot_fit"))
+             )
+      )
+    ),
+    fluidRow(
+      bs4Card(
+        title = "Log-count at time X",
+        fluidRow(column(6, numericInput(NS(id, "target_time"), "Time (min)", 5))),
+        fluidRow(column(12, tableOutput(NS(id, "table_counts"))))
+      ),
+      bs4Card(
+        title = "Time to X reductions",
+        fluidRow(
+          column(6, numericInput(NS(id, "target_count"), "Microbial count (log CFU/g)", 4))
+        ),
+        fluidRow(
+          column(12, tableOutput(NS(id, "table_times")))
+        )
+      )
     )
   )
 
@@ -24,6 +60,146 @@ isopred_module_ui <- function(id) {
 isopred_module_server <- function(id) {
 
   moduleServer(id, function(input, output, session) {
+
+    ## Dynamic parameters ------------------------------------------------------
+
+    model_map <- list(
+      Bigelow =  c("D", "logN0"),
+      Mafart = c("delta", "p", "logN0"),
+      Peleg = c("b", "n", "logN0"),
+      Metselaar = c("D", "p", "Delta", "logN0"),
+      Geeraerd = c("SL", "D", "logNres", "logN0"),
+      Trilinear = c("SL", "D", "logNres", "logN0")
+    )
+
+    par_map <- tribble(
+      ~par, ~label, ~value, ~fixed,
+      "D", "D-value (min)", 2, FALSE,
+      "delta", "delta-value (min)", 2, FALSE,
+      "p", "p-value (·)", 1, FALSE,
+      "n", "n (·)", 1, FALSE,
+      "Delta", "Delta (log CFU)", 6, TRUE,
+      "logN0", "logN0 (log CFU/g)", 8, FALSE,
+      "b", "b", .1, FALSE,
+      "SL", "Shoulder length (min)", 5, FALSE,
+      "logNres", "Tail height (log CFU/g)", 1, FALSE
+
+    )
+
+    make_input <- function(par_name) {
+
+      par_data <- par_map %>%
+        filter(par == par_name)
+
+      fluidRow(
+        column(6,
+               numericInput(NS(id, par_name), par_data$label, par_data$value)
+        )
+      )
+
+    }
+
+    output$parameters <- renderUI({
+
+      par_names <- model_map[[input$model]]
+
+      par_names %>%
+        map(.,
+            ~ make_input(.)
+        )
+
+    })
+
+    ## Predictions -------------------------------------------------------------
+
+    my_predictions <- reactiveVal()
+
+    observeEvent(input$go, {
+
+      out <- my_predictions()
+
+      ## Get the parameters
+
+      par_names <- model_map[[input$model]]
+
+      p <- list()
+
+      for (i in par_names) {
+
+        p[[i]] <- input[[i]]
+
+      }
+
+
+
+      ## Make the prediction
+
+      out[[input$pred_name]] <- tibble(
+        time = seq(0, input$max_time, length = 1000),
+        logN = prediction_map[[input$model]](p, seq(0, input$max_time, length = 1000)),
+        sim = input$pred_name
+      )
+
+      my_predictions(out)
+
+    })
+
+    observeEvent(input$clean, {
+      my_predictions(NULL)
+    })
+
+    ## Output ------------------------------------------------------------------
+
+    output$plot_fit <- renderPlot({
+
+      validate(
+        need(my_predictions(), "")
+      )
+
+      my_predictions() %>%
+        bind_rows() %>%
+        ggplot() +
+        geom_line(aes(x = time, y = logN, colour = sim))
+    })
+
+    output$table_counts <- renderTable({
+
+
+      validate(
+        need(my_predictions(), "")
+      )
+
+      my_predictions() %>%
+        map(.,
+            ~ approx(x = .$time, y = .$logN, xout = input$target_time)$y
+            ) %>%
+        # print()
+        imap_dfr(.,
+            ~ tibble(condition = .y, Time = input$target_time, `log count (log CFU/g)` = .x)
+            )
+
+    })
+
+    output$table_times <- renderTable({
+
+
+      validate(
+        need(my_predictions(), "")
+      )
+
+      my_predictions() %>%
+        map(.,
+            ~ approx(x = .$logN, y = .$time, xout = input$target_count)$y
+        ) %>%
+        # print()
+        imap_dfr(.,
+                 ~ tibble(condition = .y, `log count (log CFU/g)` = input$target_count,
+                          Time = .x)
+        )
+
+    })
+
+
 
   })
 
