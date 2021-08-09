@@ -14,7 +14,8 @@ tableInput_module_ui <- function(id, box_title = "", status = NULL,
                                  solid = FALSE,
                                  gradient = FALSE,
                                  title_2 = "",
-                                 status_2 = NULL) {
+                                 status_2 = NULL,
+                                 bttn_style = "material-flat") {
 
   tagList(
     fluidRow(
@@ -30,7 +31,7 @@ tableInput_module_ui <- function(id, box_title = "", status = NULL,
                solidHeader = solid,
                gradient = gradient,
 
-               footer = actionBttn(NS(id, "update"), "Load"),
+               footer = actionBttn(NS(id, "update"), "Load", style = bttn_style),
 
                bs4TabItem(
                  title = "Excel",
