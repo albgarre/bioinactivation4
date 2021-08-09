@@ -1,6 +1,7 @@
 
 library(shiny)
 library(bs4Dash)
+library(colourpicker)
 
 library(tidyverse)
 library(bioinactivation)
@@ -10,12 +11,17 @@ library(bioinactivation)
 dynapred_module_ui <- function(id) {
 
   tagList(
-    tableInput_module_ui(NS(id, "temp_profile"), box_title = "Temperature profile"),
-    tableInput_module_ui(NS(id, "micro_data"), box_title = "Microbial data"),
+    tableInput_module_ui(NS(id, "temp_profile"), box_title = "Temperature profile",
+                         status = "primary", status_2 = "primary"),
+    tableInput_module_ui(NS(id, "micro_data"), box_title = "Microbial data",
+                         status = "primary", status_2 = "primary"
+                         ),
     fluidRow(
       bs4Card(
+        status = "primary",
         title = "Model",
-        footer = actionBttn(NS(id, "go"), "Make prediction"),
+        footer = actionBttn(NS(id, "go"), "Make prediction",
+                            style = "material-flat"),
         pickerInput(NS(id, "model"), "Model",
                     choices = get_model_data() %>% sort(),
                     selected = "Bigelow"),
@@ -24,7 +30,40 @@ dynapred_module_ui <- function(id) {
         numericInput(NS(id, "max_time"), "Treatment time (min)", 30)
       ),
       bs4Card(
+        status = "success",
         title = "Prediction",
+        footer = downloadBttn(NS(id, "download"), "Download simulation",
+                              style = "material-flat"),
+        dropdownMenu = boxDropdown(
+          boxDropdownItem(
+            textInput(NS(id, "xlabel"), "x-label", "Time (min)"),
+            textInput(NS(id, "ylabel"), "y-label", "Microbial count (log CFU/g)"),
+            numericInput(NS(id, "ymin"), "min. y", 0),
+            numericInput(NS(id, "ymax"), "max. y", 6)
+            # colourInput(NS(id, "line_col"), "Line colour", "black"),
+            # selectInput(NS(id, "line_type"), "Line type",
+            #             choices = list("solid", "dashed", "dotted", "dotdash",
+            #                            "longdash", "twodash"))
+          ),
+          boxDropdownItem(
+            prettySwitch(NS(id, "add_temp"), "Add temperature",
+                         slim = TRUE),
+            conditionalPanel("input.add_temp == true", ns = NS(id),
+                             textInput(NS(id, "ylabel_2"), "Secondary y-label", "Temperature (ºC)")
+                             # colourInput(NS(id, "line_col2"), "Line colour", "black"),
+                             # selectInput(NS(id, "line_type2"), "Line type",
+                             #             choices = list("solid", "dashed", "dotted", "dotdash",
+                             #                            "longdash", "twodash"))
+            )
+          ),
+          boxDropdownItem(
+            prettySwitch(NS(id, "add_timeto"), "Add time to reduction",
+                         slim = TRUE),
+            conditionalPanel("input.add_timeto == true", ns = NS(id),
+                             numericInput(NS(id, "target_logN"), "target reduction", 1)
+            )
+          )
+        ),
         plotOutput(NS(id, "plot_survivor"))
       )
     )
@@ -37,6 +76,19 @@ dynapred_module_ui <- function(id) {
 dynapred_module_server <- function(id) {
 
   moduleServer(id, function(input, output, session) {
+
+    ## Download prediction -----------------------------------------------------
+
+    output$download <- downloadHandler(
+      filename = "inactivation-curve.csv",
+      content = function(file) {
+
+        my_prediction()$simulation %>%
+          write_excel_csv(., path = file)
+        # write_excel_csv(static_prediction_list(), path = file)
+
+      }
+    )
 
     ## Input -------------------------------------------------------------------
 
@@ -141,7 +193,32 @@ dynapred_module_server <- function(id) {
 
       validate(need(my_prediction(), "Make the prediction first"))
 
-      plot(my_prediction(), plot_temp = TRUE)
+      p <- plot(my_prediction(), plot_temp = input$add_temp,
+           label_y1 = input$ylabel, label_y2 = input$ylabel_2,
+           ylims = c(input$ymin, input$ymax)) +
+        xlab(input$xlabel)
+
+      print("**")
+      print(input$add_timeto)
+
+
+      if (isTRUE(input$add_timeto)) {
+
+        print(input$target_logN)
+
+        out_t <- time_to_logreduction(input$target_logN, my_prediction())
+
+        print(out_t)
+
+        p <- p +
+          geom_vline(xintercept = out_t, linetype = 3, colour = "red") +
+          geom_label(aes(x = out_t, y = input$ymax - input$target_logN,
+                         label = paste("t", "=", round(out_t, 2))))
+
+      }
+
+      p
+
     })
 
   })
