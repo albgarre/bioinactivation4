@@ -13,10 +13,13 @@ isopred_module_ui <- function(id) {
     fluidRow(
       column(6,
              bs4Card(
+               status = "primary",
                title = "Model parameters",
                width = 12,
-               footer = tagList(actionBttn(NS(id, "go"), "Make prediction"),
-                                actionBttn(NS(id, "clean"), "Clear")
+               footer = tagList(actionBttn(NS(id, "go"), "Make prediction",
+                                           style = "material-flat"),
+                                actionBttn(NS(id, "clean"), "Clear",
+                                           style = "material-flat")
                                 ),
                pickerInput(NS(id, "model"), "Model",
                            choices = c("Bigelow", "Mafart", "Peleg", # "Metselaar",
@@ -29,19 +32,30 @@ isopred_module_ui <- function(id) {
       ),
       column(6,
              bs4Card(
+               status = "success",
                title = "Model predictions",
                width = 12,
-               plotOutput(NS(id, "plot_fit"))
+               dropdownMenu = boxDropdown(
+                 boxDropdownItem(
+                   textInput(NS(id, "xlabel"), "x-label", "Time (min)"),
+                   textInput(NS(id, "ylabel"), "y-label", "Microbial count (log CFU/g)")
+                 )
+               ),
+               plotOutput(NS(id, "plot_fit")),
+               footer = downloadBttn(NS(id, "download"), "Download simulations",
+                            style = "material-flat")
              )
       )
     ),
     fluidRow(
       bs4Card(
+        status = "warning",
         title = "Log-count at time X",
         fluidRow(column(6, numericInput(NS(id, "target_time"), "Time (min)", 5))),
         fluidRow(column(12, tableOutput(NS(id, "table_counts"))))
       ),
       bs4Card(
+        status = "warning",
         title = "Time to X reductions",
         fluidRow(
           column(6, numericInput(NS(id, "target_count"), "Microbial count (log CFU/g)", 4))
@@ -60,6 +74,20 @@ isopred_module_ui <- function(id) {
 isopred_module_server <- function(id) {
 
   moduleServer(id, function(input, output, session) {
+
+    ## Download predictions
+
+    output$download <- downloadHandler(
+      filename = "inactivation-curves.csv",
+      content = function(file) {
+
+        my_predictions() %>%
+          bind_rows() %>%
+          write_excel_csv(., path = file)
+        # write_excel_csv(static_prediction_list(), path = file)
+
+      }
+    )
 
     ## Dynamic parameters ------------------------------------------------------
 
@@ -213,7 +241,9 @@ isopred_module_server <- function(id) {
       my_predictions() %>%
         bind_rows() %>%
         ggplot() +
-        geom_line(aes(x = time, y = logN, colour = sim))
+        geom_line(aes(x = time, y = logN, colour = sim)) +
+        xlab(input$xlabel) + ylab(input$ylabel) +
+        theme(legend.title = element_blank())
     })
 
     output$table_counts <- renderTable({
