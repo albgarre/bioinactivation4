@@ -13,9 +13,14 @@ stocpred_module_ui <- function(id) {
     fluidRow(
       column(6,
              bs4Card(
+               status = "primary",
                title = "Model parameters",
                width = 12,
-               footer = actionBttn(NS(id, "go"), "Make prediction"),
+               footer = tagList(actionBttn(NS(id, "go"), "Make prediction",
+                                           style = "material-flat"),
+                                actionBttn(NS(id, "seed"), "Reset seed",
+                                           style = "material-flat")
+               ),
                pickerInput(NS(id, "model"), "Model",
                            choices = c("Bigelow", "Mafart", "Peleg", # "Metselaar",
                                        "Geeraerd", "Trilinear")
@@ -28,29 +33,48 @@ stocpred_module_ui <- function(id) {
       ),
       column(6,
              bs4Card(
+               status = "success",
                title = "Model prediction",
                width = 12,
+               footer = downloadBttn(NS(id, "download"), "Download simulation",
+                                     style = "material-flat"),
+               dropdownMenu = boxDropdown(
+                 boxDropdownItem(
+                   textInput(NS(id, "xlabel"), "x-label", "Time (min)"),
+                   textInput(NS(id, "ylabel"), "y-label", "Microbial count (log CFU/g)"),
+                   numericInput(NS(id, "ymin"), "min. y", 0),
+                   numericInput(NS(id, "ymax"), "max. y", 9)
+                 )
+               ),
                plotOutput(NS(id, "plot_fit"))
              )
       )
     ),
     fluidRow(
       bs4Card(
+        status = "warning",
         title = "Log count at t",
         fluidRow(
           column(6, numericInput(NS(id, "target_time"), "Time (min)", 5, min = 0))
           ),
         fluidRow(
-          plotOutput(NS(id, "hist_logN"))
+          column(12, plotOutput(NS(id, "hist_logN")))
+        ),
+        fluidRow(
+          column(12, tableOutput(NS(id, "table_logN")))
         )
       ),
       bs4Card(
+        status = "warning",
         title = "Time to log count",
         fluidRow(
           column(6, numericInput(NS(id, "target_logN"), "Log count (log CFU/g)", 3))
           ),
         fluidRow(
-          plotOutput(NS(id, "hist_time"))
+          column(12, plotOutput(NS(id, "hist_time")))
+        ),
+        fluidRow(
+          column(12, tableOutput(NS(id, "table_time")))
         )
       )
     )
@@ -63,6 +87,36 @@ stocpred_module_ui <- function(id) {
 stocpred_module_server <- function(id) {
 
   moduleServer(id, function(input, output, session) {
+
+    ## Download prediction -----------------------------------------------------
+
+    output$download <- downloadHandler(
+      filename = "inactivation-interval.csv",
+      content = function(file) {
+
+
+        my_simulations() %>%
+          imap_dfr(.,
+                   ~ mutate(.x, sim = .y)
+          ) %>%
+          group_by(time) %>%
+          summarize(Mean = mean(logN, na.rm = TRUE),
+                    Median = median(logN, na.rm = TRUE),
+                    `Q05` = quantile(logN, .05, na.rm = TRUE),
+                    `Q95` = quantile(logN, .95, na.rm = TRUE)) %>%
+          write_excel_csv(., path = file)
+        # write_excel_csv(static_prediction_list(), path = file)
+
+      }
+    )
+
+    ## Reset the seed ----------------------------------------------------------
+
+    observeEvent(input$seed, {
+
+      set.seed(24124)
+      print("Seed back to normal")
+    })
 
 
     ## Dynamic parameters ------------------------------------------------------
@@ -78,8 +132,8 @@ stocpred_module_server <- function(id) {
 
     par_map <- tribble(
       ~par, ~label, ~value, ~fixed,
-      "logD", "log D-value (log min)", 1, FALSE,
-      "log_delta", "log delta-value (min)", 2, FALSE,
+      "logD", "log D-value (log min)", 0, FALSE,
+      "log_delta", "log delta-value (min)", 0, FALSE,
       "p", "p-value (·)", 1, FALSE,
       "n", "n (·)", 1, FALSE,
       "Delta", "Delta (log CFU)", 6, TRUE,
@@ -230,8 +284,9 @@ stocpred_module_server <- function(id) {
         ggplot(aes(x = time)) +
         geom_line(aes(y = mean_logN)) +
         geom_line(aes(y = med_logN), linetype = 2) +
-        geom_ribbon(aes(ymin = q05, ymax = q95), alpha = .5)
-
+        geom_ribbon(aes(ymin = q05, ymax = q95), alpha = .5) +
+        xlab(input$xlabel) + ylab(input$ylabel) +
+        coord_cartesian(ylim = c(input$ymin, input$ymax))
 
     })
 
@@ -251,10 +306,28 @@ stocpred_module_server <- function(id) {
                   q95 = quantile(logN, .95, na.rm = TRUE)) %>%
         ggplot() +
         geom_histogram(aes(logN), data = counts) +
-        geom_vline(aes(xintercept = mean_logN), linetype = 2, colour = "grey") +
-        geom_vline(aes(xintercept = med_logN), linetype = 3, colour = "grey") +
-        geom_vline(aes(xintercept = q05), linetype = 1, colour = "grey") +
-        geom_vline(aes(xintercept = q95), linetype = 1, colour = "grey")
+        geom_vline(aes(xintercept = mean_logN), linetype = 2, colour = "maroon") +
+        geom_vline(aes(xintercept = med_logN), linetype = 3, colour = "maroon") +
+        geom_vline(aes(xintercept = q05), linetype = 1, colour = "maroon") +
+        geom_vline(aes(xintercept = q95), linetype = 1, colour = "maroon")
+
+    })
+
+    output$table_logN <- renderTable({
+
+      validate(need(my_simulations(), ""))
+
+      counts <- my_simulations() %>%
+        map_dfr(.,
+                ~ tibble(logN = approx(x = .$time, y = .$logN, xout = input$target_time)$y)
+        )
+
+      counts %>%
+        summarize(Mean = mean(logN, na.rm = TRUE),
+                  Median = median(logN, na.rm = TRUE),
+                  Q05 = quantile(logN, .05, na.rm = TRUE),
+                  Q95 = quantile(logN, .95, na.rm = TRUE))
+
 
     })
 
@@ -274,10 +347,26 @@ stocpred_module_server <- function(id) {
                   q95 = quantile(time, .95, na.rm = TRUE)) %>%
         ggplot() +
         geom_histogram(aes(time), data = counts) +
-        geom_vline(aes(xintercept = mean_time), linetype = 2, colour = "grey") +
-        geom_vline(aes(xintercept = med_time), linetype = 3, colour = "grey") +
-        geom_vline(aes(xintercept = q05), linetype = 1, colour = "grey") +
-        geom_vline(aes(xintercept = q95), linetype = 1, colour = "grey")
+        geom_vline(aes(xintercept = mean_time), linetype = 2, colour = "maroon") +
+        geom_vline(aes(xintercept = med_time), linetype = 3, colour = "maroon") +
+        geom_vline(aes(xintercept = q05), linetype = 1, colour = "maroon") +
+        geom_vline(aes(xintercept = q95), linetype = 1, colour = "maroon")
+
+    })
+
+    output$table_time <- renderTable({
+      validate(need(my_simulations(), ""))
+
+      counts <- my_simulations() %>%
+        map_dfr(.,
+                ~ tibble(time = approx(x = .$logN, y = .$time, xout = input$target_logN)$y)
+        )
+
+      counts %>%
+        summarize(Mean = mean(time, na.rm = TRUE),
+                  Median = median(time, na.rm = TRUE),
+                  Q05 = quantile(time, .05, na.rm = TRUE),
+                  Q95 = quantile(time, .95, na.rm = TRUE))
 
     })
 
