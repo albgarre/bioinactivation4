@@ -12,11 +12,13 @@ library(rhandsontable)
 fit1step_module_ui <- function(id) {
 
   tagList(
-    tableInput_module_ui(NS(id, "input_data"), box_title = "Input data"),
+    tableInput_module_ui(NS(id, "input_data"), box_title = "Input data",
+                         status = "primary", status_2 = "primary"),
     fluidRow(
       bs4Card(
         title = "Model parameters",
-        footer = actionBttn(NS(id, "fit"), "Fit model"),
+        status = "primary",
+        footer = actionBttn(NS(id, "fit"), "Fit model", style = "material-flat"),
         fluidRow(
           column(12,
                  pickerInput(NS(id, "model"), "Model",
@@ -35,20 +37,22 @@ fit1step_module_ui <- function(id) {
       )
     ),
     fluidRow(
-      bs4Card(title = "Fitted curve", status = "success", width = 12,
-          solidHeader = FALSE, collapsible = TRUE,
-          plotOutput(NS(id, "fitted_curve"))
+      bs4Card(title = "Fitted curves", status = "success", width = 12,
+              maximizable = TRUE,
+              plotOutput(NS(id, "fitted_curve"))
       )
     ),
     fluidRow(
-      box(title = "Fitted parameters", status = "warning",
-          solidHeader = TRUE, collapsible = TRUE,
+      bs4Card(title = "Fitted parameters", status = "warning",
+          collapsible = TRUE,
           tableOutput(NS(id, "pars_table")),
           hr(),
           tableOutput(NS(id, "residual_statistics"))
       ),
-      tabBox(
+      bs4TabCard(
         title = "Residuals", side = "right",
+        maximizable = TRUE,
+        type = "tabs", status = "warning",
         tabPanel("Plot vs time",
                  plotOutput(NS(id, "residual_plot"))
         ),
@@ -90,7 +94,7 @@ fit1step_module_server <- function(id) {
       ~par, ~label, ~value, ~fixed,
       "z", "z-value (ºC)", 5, FALSE,
       "D_R", "D-value at Tref (min)", 5, FALSE,
-      "temp_ref", "Tref (ºC)", 60, TRUE,
+      "temp_ref", "Tref (ºC)", 100, TRUE,
       "delta_ref", "delta-value at Tref (min)", 5, FALSE,
       "p", "p-value (·)", 1, FALSE,
       "n", "n (·)", 1, FALSE,
