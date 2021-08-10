@@ -2,6 +2,7 @@
 
 library(shiny)
 library(bs4Dash)
+library(colourpicker)
 
 library(tidyverse)
 
@@ -12,13 +13,15 @@ library(FME)
 primary_module_ui <- function(id) {
 
   tagList(
-    tableInput_module_ui(NS(id, "input_data"), box_title = "Input data"),
+    tableInput_module_ui(NS(id, "input_data"), box_title = "Input data",
+                         status = "primary", status_2 = "primary"),
     fluidRow(
       column(6,
              bs4Card(
                title = "Model parameters",
+               status = "primary",
                width = 12,
-               footer = actionBttn(NS(id, "fit"), "Fit model"),
+               footer = actionBttn(NS(id, "fit"), "Fit model", style = "material-flat"),
                pickerInput(NS(id, "model"), "Model",
                            choices = c("Bigelow", "Mafart", "Peleg", # "Metselaar",
                                        "Geeraerd", "Trilinear")
@@ -28,26 +31,50 @@ primary_module_ui <- function(id) {
              ),
       column(6,
              bs4Card(
+               status = "success",
                title = "Model fit",
                width = 12,
-               plotOutput(NS(id, "plot_fit"))
+               footer = downloadBttn(NS(id, "download"), "Download fitted curve",
+                                     style = "material-flat"),
+               plotOutput(NS(id, "plot_fit")),
+               dropdownMenu = boxDropdown(
+                 boxDropdownItem(
+                   textInput(NS(id, "xlabel"), "x-label", "Time (min)"),
+                   textInput(NS(id, "ylabel"), "y-label", "Microbial count (log CFU/g)"),
+                   colourInput(NS(id, "linecol"), "Line colour", "black"),
+                   numericInput(NS(id, "linesize"), "Line size", 1),
+                   numericInput(NS(id, "linetype"), "Line type",
+                               1, min = 0, step = 1),
+                   colourInput(NS(id, "pointcol"), "Point colour", "black"),
+                   numericInput(NS(id, "pointsize"), "Point size", 5),
+                   numericInput(NS(id, "pointshape"), "Point shape", 1, min = 0, step = 1)
+                 )
+               )
              )
              )
     ),
     fluidRow(
       bs4Card(
+        status = "warning",
         title = "Parameter estimates",
-        tableOutput(NS(id, "par_table"))
+        fluidRow(tableOutput(NS(id, "par_table"))),
+        fluidRow(tableOutput(NS(id, "res_table")))
       ),
-      tabBox(
+      bs4TabCard(
+        status = "warning",
+        # solidHeader = TRUE,
+        type = "tabs",
         title = "Residuals", side = "right",
         tabPanel("Plot vs time",
+                 status = "warning",
                  plotOutput(NS(id, "residual_plot"))
         ),
         tabPanel("Histogram",
+                 status = "warning",
                  plotOutput(NS(id, "residuals_hist"))
         ),
         tabPanel("Statistics",
+                 status = "warning",
                  tags$h3("Shapiro-Wilk normality test of the residuals"),
                  verbatimTextOutput(NS(id, "residuals_normality"))
         )
@@ -62,6 +89,45 @@ primary_module_ui <- function(id) {
 primary_module_server <- function(id) {
 
   moduleServer(id, function(input, output, session) {
+
+
+    ## Download predictions
+
+    output$download <- downloadHandler(
+      filename = "fitted-primary.csv",
+      content = function(file) {
+
+        validate(
+          need(my_fit(), "Fit the model first")
+        )
+
+        ## Get the known pars
+
+        par_names <- model_map[[input$model]]
+
+        known <- list()
+
+        for (i in par_names) {
+
+
+          if (isTRUE(input[[paste0(i, "_fixed")]])) {
+            known[[i]] <- input[[i]]
+          }
+
+        }
+
+        known <- unlist(known)
+
+        ## Output the prediction
+
+        tibble(time = seq(0, max(my_data()$time), length = 1000),
+               logN = prediction_map[[input$model]](c(my_fit()$par, known), time)
+               ) %>%
+          write_excel_csv(., path = file)
+        # write_excel_csv(static_prediction_list(), path = file)
+
+      }
+    )
 
     ## Input -------------------------------------------------------------------
 
@@ -258,11 +324,17 @@ primary_module_server <- function(id) {
       my_data() %>%
         # mutate(pred = prediction_map[[input$model]](time, my_fit()$par)) %>%
         ggplot() +
-        geom_point(aes(x=time, y = logN)) +
-        geom_line(aes(x, y),
+        geom_point(aes(x=time, y = logN),
+                   colour = input$pointcol,
+                   size = input$pointsize,
+                   shape = input$pointshape) +
+        geom_line(aes(x, y), colour = input$linecol,
+                  size = input$linesize,
+                  linetype = input$linetype,
                   data = tibble(x = seq(0, max(my_data()$time), length = 1000),
                                 y = prediction_map[[input$model]](c(my_fit()$par, known), x))
-                  )
+                  ) +
+        xlab(input$xlabel) + ylab(input$ylabel)
         # geom_line(aes(x = time, y = pred))
 
     })
@@ -323,6 +395,26 @@ primary_module_server <- function(id) {
        paste0("There is NOT enough statistical signifficante to state that residuals are not normal, p-value: ",
               round(test_results$p.value, 3))
      }
+
+   })
+
+   output$res_table <- renderTable({
+
+     validate(
+       need(my_fit(), "Fit the model first")
+     )
+
+     tibble(res = residuals(my_fit())) %>%
+       mutate(res2 = res^2,
+              LL = dnorm(res, mean(res), sd(res)), log = TRUE) %>%
+       summarize(
+         RMSE = sqrt(mean(res2)),
+         ME = mean(res),
+         SER = sqrt(sum(res2)/my_fit()$df.residual),
+         loglik = sum(LL),
+         Bf = 10^mean(res),
+         Af = 10^RMSE
+       )
 
    })
 
