@@ -2,6 +2,7 @@
 library(shiny)
 library(bs4Dash)
 library(tidyverse)
+library(fresh)
 
 library(thematic)
 thematic_shiny()
@@ -14,19 +15,33 @@ list.files("./R") %>%
 
 ##
 
-ui <- dashboardPage(
+ui <- bs4DashPage(
+  freshTheme = use_theme(create_theme(
+    theme = "united",
+    NULL
+  )),
   header = dashboardHeader(title = dashboardBrand(title = "bioinactivation4")),
   footer = dashboardFooter(
     left = a(
-      href = "https://twitter.com/divadnojnarg",
+      href = "https://github.com/albgarre/bioinactivation4",
       target = "_blank", "@AlbertoGarre"
     ),
     right = "2021"
   ),
   sidebar = dashboardSidebar(
-    sidebarUserPanel(
-      image = "https://image.flaticon.com/icons/svg/1149/1149168.svg",
-      name = "Welcome Onboard!"
+    # sidebarUserPanel(
+    #   image = "https://image.flaticon.com/icons/svg/1149/1149168.svg",
+    #   name = "Welcome Onboard!"
+    # ),
+
+    sidebarMenu(
+      id = "welcome_menu",
+      # sidebarHeader(""),
+      menuItem(
+        "Welcome",
+        tabName = "welcome_tab",
+        icon = icon("igloo")
+      )
     ),
 
     sidebarMenu(
@@ -35,17 +50,17 @@ ui <- dashboardPage(
       menuItem(
         "Isothermal",
         tabName = "pred_iso",
-        icon = icon("sliders")
+        icon = icon("vial")
       ),
       menuItem(
         "Dynamic",
         tabName = "pred_dyna",
-        icon = icon("id-card")
+        icon = icon("plane")
       ),
       menuItem(
         "Stochastic",
         tabName = "pred_stoc",
-        icon = icon("id-card")
+        icon = icon("dice")
       )
     ),
 
@@ -55,13 +70,13 @@ ui <- dashboardPage(
       menuItem(
         "Primary model",
         tabName = "fit_primary",
-        icon = icon("sliders")
+        icon = icon("grip-lines")
       ),
-      menuItem(
-        "Secondary model",
-        tabName = "fit_secondary",
-        icon = icon("sliders")
-      ),
+      # menuItem(
+      #   "Secondary model",
+      #   tabName = "fit_secondary",
+      #   icon = icon("sliders")
+      # ),
       menuItem(
         "One step",
         tabName = "fit_1step",
@@ -70,29 +85,25 @@ ui <- dashboardPage(
       menuItem(
         "Dynamic",
         tabName = "fit_dyna",
-        icon = icon("id-card")
+        icon = icon("plane-slash")
       )
     ),
 
     sidebarMenu(
-      id = "about_menu",
-      sidebarHeader("About"),
-      menuItem(
-        "Welcome",
-        tabName = "welcome_tab",
-        icon = icon("sliders")
-      ),
+      id = "doc_menu",
+      sidebarHeader("Documentation"),
       menuItem(
         "Manual",
         tabName = "manual",
-        icon = icon("sliders")
+        icon = icon("book")
       ),
       menuItem(
         "GitHub page",
         tabName = "github",
-        icon = icon("id-card")
+        icon = icon("github")
       )
-    )
+    ),
+
 
 
   ),
