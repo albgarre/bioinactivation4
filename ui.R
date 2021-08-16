@@ -26,7 +26,7 @@ ui <- bs4DashPage(
       href = "https://github.com/albgarre/bioinactivation4",
       target = "_blank", "@AlbertoGarre"
     ),
-    right = "2021"
+    right = "beta version - August 2021"
   ),
   sidebar = dashboardSidebar(
     # sidebarUserPanel(
@@ -72,11 +72,11 @@ ui <- bs4DashPage(
         tabName = "fit_primary",
         icon = icon("grip-lines")
       ),
-      # menuItem(
-      #   "Secondary model",
-      #   tabName = "fit_secondary",
-      #   icon = icon("sliders")
-      # ),
+      menuItem(
+        "Two step",
+        tabName = "fit_secondary",
+        icon = icon("sliders")
+      ),
       menuItem(
         "One step",
         tabName = "fit_1step",
@@ -98,9 +98,9 @@ ui <- bs4DashPage(
         icon = icon("book")
       ),
       menuItem(
-        "GitHub page",
-        tabName = "github",
-        icon = icon("github")
+        "About",
+        tabName = "other_page",
+        icon = icon("microchip")
       )
     ),
 
@@ -128,7 +128,7 @@ ui <- bs4DashPage(
       ),
       tabItem(
         tabName = "fit_secondary",
-        "Secondary model"
+        fit2step_module_ui("module_2step")
       ),
       tabItem(
         tabName = "fit_1step",
@@ -141,6 +141,10 @@ ui <- bs4DashPage(
       tabItem(
         tabName = "welcome_tab",
         welcome_module_ui("module_welcome")
+      ),
+      tabItem(
+        tabName = "other_page",
+        code_module_ui("other")
       )
     )
 
