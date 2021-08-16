@@ -11,16 +11,33 @@ stocpred_module_ui <- function(id) {
 
   tagList(
     fluidRow(
+      column(12,
+             bs4Jumbotron(
+               width = 12,
+               status = "info",
+               title = "Model predictions including parameter uncertainty",
+               "asfsa"
+             )
+      )
+    ),
+    fluidRow(
       column(6,
              bs4Card(
                status = "primary",
                title = "Model parameters",
                width = 12,
-               footer = tagList(actionBttn(NS(id, "go"), "Make prediction",
-                                           style = "material-flat"),
-                                actionBttn(NS(id, "seed"), "Reset seed",
-                                           style = "material-flat")
+               footer = tagList(actionButton(NS(id, "go"), "Make prediction",
+                                             outline = TRUE, flat = FALSE,
+                                             status = "primary"),
+                                actionButton(NS(id, "seed"), "Reset seed",
+                                             outline = TRUE, flat = FALSE,
+                                             status = "secondary")
                ),
+               # footer = tagList(actionBttn(NS(id, "go"), "Make prediction",
+               #                             style = "material-flat"),
+               #                  actionBttn(NS(id, "seed"), "Reset seed",
+               #                             style = "material-flat")
+               # ),
                pickerInput(NS(id, "model"), "Model",
                            choices = c("Bigelow", "Mafart", "Peleg", # "Metselaar",
                                        "Geeraerd", "Trilinear")
@@ -51,32 +68,36 @@ stocpred_module_ui <- function(id) {
       )
     ),
     fluidRow(
-      bs4Card(
-        status = "warning",
-        title = "Log count at t",
-        fluidRow(
-          column(6, numericInput(NS(id, "target_time"), "Time (min)", 5, min = 0))
-          ),
-        fluidRow(
-          column(12, plotOutput(NS(id, "hist_logN")))
-        ),
-        fluidRow(
-          column(12, tableOutput(NS(id, "table_logN")))
-        )
-      ),
-      bs4Card(
-        status = "warning",
-        title = "Time to log count",
-        fluidRow(
-          column(6, numericInput(NS(id, "target_logN"), "Log count (log CFU/g)", 3))
-          ),
-        fluidRow(
-          column(12, plotOutput(NS(id, "hist_time")))
-        ),
-        fluidRow(
-          column(12, tableOutput(NS(id, "table_time")))
-        )
-      )
+      column(6,
+             bs4Card(
+               status = "warning", width = 12,
+               title = "Log count at t",
+               fluidRow(
+                 column(6, numericInput(NS(id, "target_time"), "Time (min)", 5, min = 0))
+               ),
+               fluidRow(
+                 column(12, plotOutput(NS(id, "hist_logN")))
+               ),
+               fluidRow(
+                 column(12, tableOutput(NS(id, "table_logN")))
+               )
+             )
+             ),
+      column(6,
+             bs4Card(
+               status = "warning", width = 12,
+               title = "Time to log count",
+               fluidRow(
+                 column(6, numericInput(NS(id, "target_logN"), "Log count (log CFU/g)", 3))
+               ),
+               fluidRow(
+                 column(12, plotOutput(NS(id, "hist_time")))
+               ),
+               fluidRow(
+                 column(12, tableOutput(NS(id, "table_time")))
+               )
+             )
+             )
     )
   )
 

@@ -12,58 +12,85 @@ library(rhandsontable)
 fit1step_module_ui <- function(id) {
 
   tagList(
+    fluidRow(
+      column(12,
+             bs4Jumbotron(
+               width = 12,
+               status = "info",
+               title = "Fitting of isothermal data using a one-step approach",
+               "asfsa"
+             )
+      )
+    ),
     tableInput_module_ui(NS(id, "input_data"), box_title = "Input data",
                          status = "primary", status_2 = "primary"),
     fluidRow(
-      bs4Card(
-        title = "Model parameters",
-        status = "primary",
-        footer = actionBttn(NS(id, "fit"), "Fit model", style = "material-flat"),
-        fluidRow(
-          column(12,
-                 pickerInput(NS(id, "model"), "Model",
-                             choices = get_isothermal_model_data() %>% sort(),
-                             selected = "Bigelow"
+      column(12,
+             bs4Card(
+               width = 6,
+               title = "Model parameters",
+               status = "primary",
+               # footer = actionBttn(NS(id, "fit"), "Fit model", style = "material-flat"),
+               footer = actionButton(NS(id, "fit"), "Fit model",
+                                     outline = TRUE, flat = FALSE,
+                                     status = "primary"),
+               fluidRow(
+                 column(12,
+                        pickerInput(NS(id, "model"), "Model",
+                                    choices = get_isothermal_model_data() %>% sort(),
+                                    selected = "Bigelow"
+                        )
                  )
-                 )
-        ),
-        fluidRow(
-          fluidRow(
-            column(12,
-                   uiOutput(NS(id, "initial_guess"))
+               ),
+               fluidRow(
+                 fluidRow(
+                   column(12,
+                          uiOutput(NS(id, "initial_guess"))
                    )
-          )
-        )
-      )
+                 )
+               )
+             )
+             )
     ),
     fluidRow(
-      bs4Card(title = "Fitted curves", status = "success", width = 12,
-              maximizable = TRUE,
-              plotOutput(NS(id, "fitted_curve"))
-      )
+      column(12,
+             bs4Card(title = "Fitted curves", status = "success",
+                     width = 12,
+                     maximizable = TRUE,
+                     plotOutput(NS(id, "fitted_curve"))
+             )
+             )
+
     ),
     fluidRow(
-      bs4Card(title = "Fitted parameters", status = "warning",
-          collapsible = TRUE,
-          tableOutput(NS(id, "pars_table")),
-          hr(),
-          tableOutput(NS(id, "residual_statistics"))
-      ),
-      bs4TabCard(
-        title = "Residuals", side = "right",
-        maximizable = TRUE,
-        type = "tabs", status = "warning",
-        tabPanel("Plot vs time",
-                 plotOutput(NS(id, "residual_plot"))
-        ),
-        tabPanel("Histogram",
-                 plotOutput(NS(id, "residuals_hist"))
-        ),
-        tabPanel("Statistics",
-                 tags$h3("Shapiro-Wilk normality test of the residuals"),
-                 verbatimTextOutput(NS(id, "residuals_normality"))
-        )
-      )
+      column(6,
+             bs4Card(
+               title = "Fitted parameters", status = "warning",
+               width = 12,
+               collapsible = TRUE,
+               tableOutput(NS(id, "pars_table")),
+               hr(),
+               tableOutput(NS(id, "residual_statistics"))
+             )
+             ),
+      column(6,
+             bs4TabCard(
+               title = "Residuals", side = "right",
+               maximizable = TRUE, width = 12,
+               type = "tabs", status = "warning",
+               tabPanel("Plot vs time",
+                        plotOutput(NS(id, "residual_plot"))
+               ),
+               tabPanel("Histogram",
+                        plotOutput(NS(id, "residuals_hist"))
+               ),
+               tabPanel("Statistics",
+                        tags$h3("Shapiro-Wilk normality test of the residuals"),
+                        verbatimTextOutput(NS(id, "residuals_normality"))
+               )
+             )
+             )
+
     )
   )
 

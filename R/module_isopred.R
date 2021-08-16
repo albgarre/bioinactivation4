@@ -11,16 +11,35 @@ isopred_module_ui <- function(id) {
 
   tagList(
     fluidRow(
+      column(12,
+             bs4Jumbotron(
+               width = 12,
+               status = "info",
+               title = "Model predictions based on primary models",
+               "asfsa"
+             )
+             )
+    ),
+    fluidRow(
       column(6,
              bs4Card(
                status = "primary",
                title = "Model parameters",
                width = 12,
-               footer = tagList(actionBttn(NS(id, "go"), "Make prediction",
-                                           style = "material-flat"),
-                                actionBttn(NS(id, "clean"), "Clear",
-                                           style = "material-flat")
+               footer = tagList(actionButton(NS(id, "go"), "Make prediction",
+                                             outline = TRUE, flat = FALSE,
+                                             status = "primary"
+                                             ),
+                                actionButton(NS(id, "clean"), "Clear",
+                                             outline = TRUE, flat = FALSE,
+                                             status = "secondary"
+                                             )
                                 ),
+               # footer = tagList(actionBttn(NS(id, "go"), "Make prediction",
+               #                             style = "material-flat"),
+               #                  actionBttn(NS(id, "clean"), "Clear",
+               #                             style = "material-flat")
+               # ),
                pickerInput(NS(id, "model"), "Model",
                            choices = c("Bigelow", "Mafart", "Peleg", # "Metselaar",
                                        "Geeraerd", "Trilinear")
@@ -48,22 +67,26 @@ isopred_module_ui <- function(id) {
       )
     ),
     fluidRow(
-      bs4Card(
-        status = "warning",
-        title = "Log-count at time X",
-        fluidRow(column(6, numericInput(NS(id, "target_time"), "Time (min)", 5))),
-        fluidRow(column(12, tableOutput(NS(id, "table_counts"))))
-      ),
-      bs4Card(
-        status = "warning",
-        title = "Time to X reductions",
-        fluidRow(
-          column(6, numericInput(NS(id, "target_count"), "Microbial count (log CFU/g)", 4))
-        ),
-        fluidRow(
-          column(12, tableOutput(NS(id, "table_times")))
-        )
-      )
+      column(6,
+             bs4Card(
+               status = "warning", width = 12,
+               title = "Log-count at time X",
+               fluidRow(column(6, numericInput(NS(id, "target_time"), "Time (min)", 5))),
+               fluidRow(column(12, tableOutput(NS(id, "table_counts"))))
+             )
+             ),
+      column(6,
+             bs4Card(
+               status = "warning", width = 12,
+               title = "Time to X reductions",
+               fluidRow(
+                 column(6, numericInput(NS(id, "target_count"), "Microbial count (log CFU/g)", 4))
+               ),
+               fluidRow(
+                 column(12, tableOutput(NS(id, "table_times")))
+               )
+             )
+             )
     )
   )
 

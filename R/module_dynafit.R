@@ -1,6 +1,7 @@
 
 library(shiny)
 library(bs4Dash)
+library(shinycssloaders)
 
 library(tidyverse)
 library(bioinactivation)
@@ -10,53 +11,117 @@ library(bioinactivation)
 dynafit_module_ui <- function(id) {
 
   tagList(
-    tableInput_module_ui(NS(id, "temp_profile"), box_title = "Temperature profile"),
-    tableInput_module_ui(NS(id, "micro_data"), box_title = "Microbial data"),
     fluidRow(
-      bs4Card(
-        title = "Model",
-        pickerInput(NS(id, "model"), "Model",
-                    choices = get_model_data() %>% sort(),
-                    selected = "Bigelow"),
-        uiOutput(NS(id, "par_selector"))
-      ),
-      bs4Card(
-        title = "Initial guess",
-        plotOutput(NS(id, "plot_guess"))
+      column(12,
+             bs4Jumbotron(
+               width = 12,
+               status = "info",
+               title = "Model fitting from dynamic data",
+               "asfsa"
+             )
       )
     ),
+    tableInput_module_ui(NS(id, "temp_profile"), box_title = "Temperature profile",
+                         status = "primary", status_2 = "primary"),
+    tableInput_module_ui(NS(id, "micro_data"), box_title = "Microbial data",
+                         status = "primary", status_2 = "primary"),
     fluidRow(
-      bs4Card(
-        title = "Fitting algorithm",
-        footer = actionBttn(NS(id, "go"), "Fit the model"),
-        fluidRow(
-          column(6,
-                 pickerInput(NS(id, "algorithm"), "Fitting algorithm",
-                             choices = list(`Non-linear regression`="nlr",
-                                            `Adaptive Monte Carlo` = "MCMC"))
+      column(6,
+             bs4Card(
+               title = "Model", width = 12,
+               status = "primary",
+               pickerInput(NS(id, "model"), "Model",
+                           choices = get_model_data() %>% sort(),
+                           selected = "Bigelow"),
+               uiOutput(NS(id, "par_selector"))
+             )
+             ),
+      column(6,
+             bs4Card(
+               title = "Initial guess", width = 12,
+               plotOutput(NS(id, "plot_guess"))
+             )
+             )
+    ),
+    fluidRow(
+      column(6,
+             bs4Card(
+               title = "Fitting algorithm",
+               status = "primary", width = 12,
+               # footer = actionBttn(NS(id, "go"), "Fit the model", style = "material-flat"),
+               footer = actionButton(NS(id, "go"), "Fit the model",
+                                     outline = TRUE, flat = FALSE,
+                                     status = "primary"
+                                     ),
+               fluidRow(
+                 column(6,
+                        pickerInput(NS(id, "algorithm"), "Fitting algorithm",
+                                    choices = list(`Non-linear regression`="nlr",
+                                                   `Adaptive Monte Carlo` = "MCMC"))
                  )
-        ),
-        conditionalPanel("input.algorithm == 'MCMC'", ns = NS(id),
-                         fluidRow(
-                           column(6, numericInput(NS(id, "niter"), "Number of MC iterations",
-                                                  1000, min = 1))
-                         ),
-                         fluidRow(
-                           column(6, numericInput(NS(id, "burnin"), "Burnin length", 0, min = 0))
-                         ),
-                         fluidRow(
-                           column(6, numericInput(NS(id, "updatecov"), "Updatecov", 0, min = 0))
-                         ),
-                         fluidRow(
-                           column(6, actionBttn(NS(id, "reset_seed"), "Reset seed"))
-                         )
-                         )
+               ),
+               conditionalPanel("input.algorithm == 'MCMC'", ns = NS(id),
+                                fluidRow(
+                                  column(6, numericInput(NS(id, "niter"), "Number of MC iterations",
+                                                         1000, min = 1))
+                                ),
+                                fluidRow(
+                                  column(6, numericInput(NS(id, "burnin"), "Burnin length", 0, min = 0))
+                                ),
+                                fluidRow(
+                                  column(6, numericInput(NS(id, "updatecov"), "Updatecov", 0, min = 0))
+                                ),
+                                fluidRow(
+                                  # column(6, actionBttn(NS(id, "reset_seed"), "Reset seed", style = "material-flat"))
+                                  column(6, actionButton(NS(id, "reset_seed"), "Reset seed",
+                                                         outline = TRUE, flat = FALSE,
+                                                         status = "primary"
+                                                         ))
+                                )
+               )
 
-      ),
-      bs4Card(
-        title = "Model fit",
-        plotOutput(NS(id, "plot_fit"))
-      )
+             )
+             ),
+      column(6,
+             bs4Card(
+               status = "success",
+               title = "Model fit", width = 12,
+               dropdownMenu = boxDropdown(
+                 boxDropdownItem(
+                   textInput(NS(id, "xlabel"), "x-label", "Time (min)"),
+                   textInput(NS(id, "ylabel"), "y-label", "Microbial count (log CFU/g)"),
+                   numericInput(NS(id, "miny"), "min. y", 0),
+                   numericInput(NS(id, "maxy"), "max. y", 11),
+                   prettySwitch(NS(id, "add_temp"), "Add temperature", slim = TRUE),
+                   conditionalPanel("input.add_temp == true", ns = NS(id),
+                                    textInput(NS(id, "ylabel2"), "Sec. y-label", "Temperature (ºC)")
+                   )
+
+                 )
+               ),
+               plotOutput(NS(id, "plot_fit")) %>% withSpinner()
+             )
+             )
+    ),
+    fluidRow(
+      column(6,
+             bs4Card(
+               title = "Parameter estimates",
+               status = "warning", width = 12,
+               tableOutput(NS(id, "par_table")),
+               tableOutput(NS(id, "res_table"))
+             )
+             ),
+      column(6,
+             bs4Card(
+               title = "Residuals",
+               status = "warning", width = 12,
+               plotOutput(NS(id, "res_plot")),
+               plotOutput(NS(id, "res_hist")),
+               textOutput(NS(id, "shapiro_test")),
+               plotOutput(NS(id, "MCMC_chain"))
+             )
+             )
     )
   )
 
@@ -82,8 +147,8 @@ dynafit_module_server <- function(id) {
                                           col_names = c("time", "logN"),
                                           xvar = "time", yvar = "logN",
                                           default_data =  data.frame(
-                                            time = seq(0, 20, length = 10),
-                                            logN = c(8, 7.9, 7.5, 7.3, 5.5, 1.8, -1, -2, -3.6, -4.3)
+                                            time = seq(0, 20, length = 8),
+                                            logN = c(8, 7.9, 7.5, 7.3, 5.5, 1.8, -1, -2)+2
                                           )
     )
 
@@ -93,7 +158,7 @@ dynafit_module_server <- function(id) {
       ~par, ~label, ~value, ~fixed,
       "z", "z-value (ºC)", 5, FALSE,
       "D_R", "D-value at Tref (min)", 5, FALSE,
-      "temp_ref", "Tref (ºC)", 60, TRUE,
+      "temp_ref", "Tref (ºC)", 57, TRUE,
       "delta_ref", "delta-value at Tref (min)", 5, FALSE,
       "p", "p-value (·)", 1, FALSE,
       "n", "n (·)", 1, FALSE,
@@ -102,7 +167,7 @@ dynafit_module_server <- function(id) {
       "Delta", "Delta (log CFU)", 6, TRUE,
       "k_ref", "k at Tref", 1e-2, FALSE,
       "Ea", "Ea", 1e-3, FALSE,
-      "N0", "N0 (CFU/g)", 1e6, FALSE,
+      "N0", "N0 (CFU/g)", 1e10, FALSE,
       "N_min", "Tail height (CFU/g)", 100, FALSE,
       "C_c0", "C_c0 (·)", 1e3, FALSE,
     )
@@ -197,7 +262,8 @@ dynafit_module_server <- function(id) {
 
     my_fit <- reactiveVal()
 
-    observeEvent(input$go, {
+    observeEvent(input$go, withProgress(message = "Fitting the model...",
+                                        {
 
       validate(
         need(my_temperature(), "Input the temperature profile"),
@@ -251,6 +317,7 @@ dynafit_module_server <- function(id) {
       my_fit(out)
 
     })
+    )
 
     ## Output ------------------------------------------------------------------
 
@@ -259,8 +326,130 @@ dynafit_module_server <- function(id) {
       validate(
         need(my_fit(), "Fit the model first")
       )
-      plot(my_fit())
+
+      plot(my_fit(),
+           plot_temp = input$add_temp,
+           label_y1 = input$ylabel,
+           label_y2 = input$ylabel2,
+           ylims = c(input$miny, input$maxy)
+           ) +
+        xlab(input$xlabel)
     })
+
+    output$par_table <- renderTable({
+
+      validate(
+        need(my_fit(), "Fit the model first")
+      )
+
+      if (isTRUE(is.FitInactivation(my_fit()))) {
+
+        summary(my_fit())$par %>%
+          as_tibble(rownames = "Parameter") %>%
+          select(Parameter, Estimate, `Std. Error`)
+
+      } else {
+
+        summary(my_fit()) %>%
+          rownames_to_column("Index")
+
+
+      }
+
+    })
+
+    output$res_table <- renderTable({
+
+      validate(
+        need(my_fit(), "")
+      )
+
+      goodness_of_fit(my_fit())
+
+    })
+
+    ## Diagnosis ---------------------------------------------------------------
+
+    dyna_modCost <- reactive({
+
+      validate(need(my_fit(), message = FALSE))
+
+      my_simulation <- my_fit() %>%
+        .$best_prediction %>%
+        .$simulation %>%
+        select(time, logN) %>%
+        as.data.frame()
+
+      my_data <- my_counts() %>%
+        as.data.frame() %>%
+        select(time, logN)
+
+      out <- modCost(model = my_simulation,
+              obs = my_data)
+
+      out
+
+    })
+
+    output$res_plot <- renderPlot({
+
+      validate(
+        need(my_fit(), "")
+      )
+
+      dyna_modCost()$residuals %>%
+        ggplot() +
+        geom_point(aes(x = x, y = res)) +
+        xlab("Time") + ylab("Residual") +
+        geom_hline(yintercept = 0, linetype = 2)
+
+
+    })
+
+    output$shapiro_test <- renderText({
+
+      test_results <- shapiro.test(dyna_modCost()$residuals$res)
+
+      if (test_results$p.value < 0.05) {
+        paste0("There is enough statistical signifficante to state that residuals are not normal, p-value: ",
+               round(test_results$p.value, 3))
+      } else {
+        paste0("There is NOT enough statistical signifficante to state that residuals are not normal, p-value: ",
+               round(test_results$p.value, 3))
+      }
+
+    })
+
+    output$res_hist <- renderPlot({
+
+
+      validate(
+        need(my_fit(), "")
+      )
+
+      dyna_modCost()$residuals %>%
+        ggplot() +
+        geom_histogram(aes(res)) +
+        xlab("Residual") +
+        geom_vline(xintercept = 0, linetype = 2)
+
+    })
+
+    output$MCMC_chain <- renderPlot({
+
+      validate(
+        need(my_fit(), "")
+      )
+
+      if (isTRUE(is.FitInactivation(my_fit()))) {
+        NULL
+      } else {
+        plot(my_fit()$modMCMC)
+      }
+
+
+    })
+
 
     ## Seed --------------------------------------------------------------------
 

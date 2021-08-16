@@ -11,61 +11,78 @@ library(bioinactivation)
 dynapred_module_ui <- function(id) {
 
   tagList(
+    fluidRow(
+      column(12,
+             bs4Jumbotron(
+               width = 12,
+               status = "info",
+               title = "Model predictions under dynamic conditions",
+               "asfsa"
+             )
+      )
+    ),
     tableInput_module_ui(NS(id, "temp_profile"), box_title = "Temperature profile",
                          status = "primary", status_2 = "primary"),
     tableInput_module_ui(NS(id, "micro_data"), box_title = "Microbial data",
                          status = "primary", status_2 = "primary"
                          ),
     fluidRow(
-      bs4Card(
-        status = "primary",
-        title = "Model",
-        footer = actionBttn(NS(id, "go"), "Make prediction",
-                            style = "material-flat"),
-        pickerInput(NS(id, "model"), "Model",
-                    choices = get_model_data() %>% sort(),
-                    selected = "Bigelow"),
-        uiOutput(NS(id, "par_selector")),
-        hr(),
-        numericInput(NS(id, "max_time"), "Treatment time (min)", 30)
-      ),
-      bs4Card(
-        status = "success",
-        title = "Prediction",
-        footer = downloadBttn(NS(id, "download"), "Download simulation",
-                              style = "material-flat"),
-        dropdownMenu = boxDropdown(
-          boxDropdownItem(
-            textInput(NS(id, "xlabel"), "x-label", "Time (min)"),
-            textInput(NS(id, "ylabel"), "y-label", "Microbial count (log CFU/g)"),
-            numericInput(NS(id, "ymin"), "min. y", 0),
-            numericInput(NS(id, "ymax"), "max. y", 6)
-            # colourInput(NS(id, "line_col"), "Line colour", "black"),
-            # selectInput(NS(id, "line_type"), "Line type",
-            #             choices = list("solid", "dashed", "dotted", "dotdash",
-            #                            "longdash", "twodash"))
-          ),
-          boxDropdownItem(
-            prettySwitch(NS(id, "add_temp"), "Add temperature",
-                         slim = TRUE),
-            conditionalPanel("input.add_temp == true", ns = NS(id),
-                             textInput(NS(id, "ylabel_2"), "Secondary y-label", "Temperature (ºC)")
-                             # colourInput(NS(id, "line_col2"), "Line colour", "black"),
-                             # selectInput(NS(id, "line_type2"), "Line type",
-                             #             choices = list("solid", "dashed", "dotted", "dotdash",
-                             #                            "longdash", "twodash"))
-            )
-          ),
-          boxDropdownItem(
-            prettySwitch(NS(id, "add_timeto"), "Add time to reduction",
-                         slim = TRUE),
-            conditionalPanel("input.add_timeto == true", ns = NS(id),
-                             numericInput(NS(id, "target_logN"), "target reduction", 1)
-            )
-          )
-        ),
-        plotOutput(NS(id, "plot_survivor"))
-      )
+      column(6,
+             bs4Card(
+               status = "primary",
+               title = "Model", width = 12,
+               footer = actionButton(NS(id, "go"), "Make prediction",
+                                     outline = TRUE, flat = FALSE,
+                                     status = "primary"),
+               # footer = actionBttn(NS(id, "go"), "Make prediction",
+               #                     style = "material-flat"),
+               pickerInput(NS(id, "model"), "Model",
+                           choices = get_model_data() %>% sort(),
+                           selected = "Bigelow"),
+               uiOutput(NS(id, "par_selector")),
+               hr(),
+               numericInput(NS(id, "max_time"), "Treatment time (min)", 30)
+             )
+             ),
+      column(6,
+             bs4Card(
+               status = "success", width = 12,
+               title = "Prediction",
+               footer = downloadBttn(NS(id, "download"), "Download simulation",
+                                     style = "material-flat"),
+               dropdownMenu = boxDropdown(
+                 boxDropdownItem(
+                   textInput(NS(id, "xlabel"), "x-label", "Time (min)"),
+                   textInput(NS(id, "ylabel"), "y-label", "Microbial count (log CFU/g)"),
+                   numericInput(NS(id, "ymin"), "min. y", 0),
+                   numericInput(NS(id, "ymax"), "max. y", 6)
+                   # colourInput(NS(id, "line_col"), "Line colour", "black"),
+                   # selectInput(NS(id, "line_type"), "Line type",
+                   #             choices = list("solid", "dashed", "dotted", "dotdash",
+                   #                            "longdash", "twodash"))
+                 ),
+                 boxDropdownItem(
+                   prettySwitch(NS(id, "add_temp"), "Add temperature",
+                                slim = TRUE),
+                   conditionalPanel("input.add_temp == true", ns = NS(id),
+                                    textInput(NS(id, "ylabel_2"), "Secondary y-label", "Temperature (ºC)")
+                                    # colourInput(NS(id, "line_col2"), "Line colour", "black"),
+                                    # selectInput(NS(id, "line_type2"), "Line type",
+                                    #             choices = list("solid", "dashed", "dotted", "dotdash",
+                                    #                            "longdash", "twodash"))
+                   )
+                 ),
+                 boxDropdownItem(
+                   prettySwitch(NS(id, "add_timeto"), "Add time to reduction",
+                                slim = TRUE),
+                   conditionalPanel("input.add_timeto == true", ns = NS(id),
+                                    numericInput(NS(id, "target_logN"), "target reduction", 1)
+                   )
+                 )
+               ),
+               plotOutput(NS(id, "plot_survivor"))
+             )
+             )
     )
   )
 

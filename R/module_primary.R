@@ -13,6 +13,16 @@ library(FME)
 primary_module_ui <- function(id) {
 
   tagList(
+    fluidRow(
+      column(12,
+             bs4Jumbotron(
+               width = 12,
+               status = "info",
+               title = "Fitting of primary inactivation models",
+               "asfsa"
+             )
+      )
+    ),
     tableInput_module_ui(NS(id, "input_data"), box_title = "Input data",
                          status = "primary", status_2 = "primary"),
     fluidRow(
@@ -21,7 +31,10 @@ primary_module_ui <- function(id) {
                title = "Model parameters",
                status = "primary",
                width = 12,
-               footer = actionBttn(NS(id, "fit"), "Fit model", style = "material-flat"),
+               footer = actionButton(NS(id, "fit"), "Fit model",
+                                     outline = TRUE, flat = FALSE,
+                                     status = "primary"),
+               # footer = actionBttn(NS(id, "fit"), "Fit model", style = "material-flat"),
                pickerInput(NS(id, "model"), "Model",
                            choices = c("Bigelow", "Mafart", "Peleg", # "Metselaar",
                                        "Geeraerd", "Trilinear")
@@ -54,31 +67,37 @@ primary_module_ui <- function(id) {
              )
     ),
     fluidRow(
-      bs4Card(
-        status = "warning",
-        title = "Parameter estimates",
-        fluidRow(tableOutput(NS(id, "par_table"))),
-        fluidRow(tableOutput(NS(id, "res_table")))
-      ),
-      bs4TabCard(
-        status = "warning",
-        # solidHeader = TRUE,
-        type = "tabs",
-        title = "Residuals", side = "right",
-        tabPanel("Plot vs time",
-                 status = "warning",
-                 plotOutput(NS(id, "residual_plot"))
-        ),
-        tabPanel("Histogram",
-                 status = "warning",
-                 plotOutput(NS(id, "residuals_hist"))
-        ),
-        tabPanel("Statistics",
-                 status = "warning",
-                 tags$h3("Shapiro-Wilk normality test of the residuals"),
-                 verbatimTextOutput(NS(id, "residuals_normality"))
-        )
-      )
+      column(6,
+             bs4Card(
+               width = 12,
+               status = "warning",
+               title = "Parameter estimates",
+               fluidRow(tableOutput(NS(id, "par_table"))),
+               fluidRow(tableOutput(NS(id, "res_table")))
+             )
+             ),
+      column(6,
+             bs4TabCard(
+               width = 12,
+               status = "warning",
+               # solidHeader = TRUE,
+               type = "tabs",
+               title = "Residuals", side = "right",
+               tabPanel("Plot vs time",
+                        status = "warning",
+                        plotOutput(NS(id, "residual_plot"))
+               ),
+               tabPanel("Histogram",
+                        status = "warning",
+                        plotOutput(NS(id, "residuals_hist"))
+               ),
+               tabPanel("Statistics",
+                        status = "warning",
+                        tags$h3("Shapiro-Wilk normality test of the residuals"),
+                        verbatimTextOutput(NS(id, "residuals_normality"))
+               )
+             )
+             )
     )
   )
 

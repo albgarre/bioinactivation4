@@ -13,35 +13,55 @@ welcome_module_ui <- function(id) {
     fluidRow(
       column(12,
              bs4Jumbotron(
-               status = "info",
+               status = "warning",
                title = "bioinactivation",
-               lead = "Making inactivation modeling easier since 2017",
-               tags$p("Bioinactivation FE (full environment) has been developed as a colaboration between the departments
-of Applied Mathematics and Food Microbiology of the Technical University of Cartagena and the Swedish National Food Safety
-                       Agency."),
-               tags$p("This application provides a user interface to the functions for modelling of microbial inactivation
-                                   implemented in the bionactivation package of R (a.k.a. bioinactivation core)."),
-               tags$p("A link to the latest version of this application can be found in the following
-                                   webpage:"),
-               tags$p("https://foodlab-upct.shinyapps.io/bioinactivationFE/"),
-               tags$hr(),
-               tags$p("For bug reports and support, please use one of the following e-mail accounts:"),
-               tags$p("garre.alberto@gmail.com"),
-               tags$p("pablo.fernandez@upct.es"),
-               tags$hr(),
-               tags$p("When using this application, please cite it as:"),
-               tags$p("Alberto Garre, Pablo S. Fernandez, Roland Lindqvist,Jose A. Egea,
-                                    Bioinactivation: Software for modelling dynamic microbial inactivation,
-                                    Food Research International, Volume 93, March 2017, Pages 66-74, ISSN 0963-9969,
-                                    http://dx.doi.org/10.1016/j.foodres.2017.01.012."),
-               tags$p("and/or"),
-               tags$p("Garre, A., Clemente-Carazo, M., Fernandez, P. S., Lindqvist, R., & Egea, J. A. (2018).
-                       Bioinactivation FE: A free web application for modelling isothermal and dynamic microbial inactivation.
-                       Food Research International, 112, 353–360. https://doi.org/10.1016/j.foodres.2018.06.057"),
-               downloadLink("download_manual", "Download manual"),
+               lead = h4("Reducing stress and anxiety since 2017"),
                btnName = NULL
              )
       )
+    ),
+    fluidRow(
+      column(6,
+             carousel(
+               id = "mycarousel",
+               carouselItem(
+                 caption = "Isothermal predictions",
+                 tags$img(src = "/img/pic_isopred.png")
+               ),
+               carouselItem(
+                 caption = "Dynamic fitting",
+                 tags$img(src = "/img/fit_dynamic.png")
+               ),
+               carouselItem(
+                 caption = "Dynamic predictions",
+                 tags$img(src = "/img/dynamic_predictions.png")
+               ),
+               carouselItem(
+                 caption = "Fit primary model",
+                 tags$img(src = "/img/fit_primary.png")
+               ),
+               carouselItem(
+                 caption = "One-step fitting",
+                 tags$img(src = "/img/fit_secondary.png")
+               ),
+               carouselItem(
+                 caption = "Stochastic predictions",
+                 tags$img(src = "/img/stoc_pred.png")
+               )
+             )
+             ),
+      column(6,
+             bs4Card(title = "",
+                     width = 12,
+                     gradient = TRUE,
+                     background = "primary",
+                     collapsible = FALSE,
+                     p("Bioinactivation was developed within the Technical University of Cartagena (Spain) with the aim to ease modelling of microbial inactivation."),
+                     p("It includes functions for fitting inactivation models commonly used in predictive microbiology to data gathered under static or dynamic conditions."),
+                     p("It can also be used to make predictions under static or dynamic conditions."),
+                     p("Do not hesitate to contact us if you have any comment!")
+                     )
+             )
     )
   )
 

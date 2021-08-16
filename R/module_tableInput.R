@@ -31,7 +31,11 @@ tableInput_module_ui <- function(id, box_title = "", status = NULL,
                solidHeader = solid,
                gradient = gradient,
 
-               footer = actionBttn(NS(id, "update"), "Load", style = bttn_style),
+               # footer = actionBttn(NS(id, "update"), "Load", style = bttn_style),
+               footer = actionButton(NS(id, "update"), "Load",
+                                     outline = TRUE, flat = FALSE,
+                                     status = "primary"
+                                     ),
 
                bs4TabItem(
                  title = "Excel",
