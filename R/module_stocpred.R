@@ -5,6 +5,8 @@ library(bs4Dash)
 library(tidyverse)
 library(bioinactivation)
 
+library(plotly)
+
 ## UI --------------------------------------------------------------------------
 
 stocpred_module_ui <- function(id) {
@@ -15,8 +17,17 @@ stocpred_module_ui <- function(id) {
              bs4Jumbotron(
                width = 12,
                status = "info",
+               btnName = NULL,
                title = "Model predictions including parameter uncertainty",
-               "asfsa"
+               p(
+                 paste("This module includes parameter uncertainty in the model predictions.",
+                       "It is designed to include variability/uncertainty in predictions of microbial inactivation under isothermal conditions.")
+               ),
+               p(
+                 paste("The user inputs the probability distributions of the model parameters of the inactivation model (normal distributions).",
+                       "Then, the prediction interval is estimated by forward uncertainty propagation based on Monte Carlo simulations."
+                       )
+               )
              )
       )
     ),
@@ -53,17 +64,27 @@ stocpred_module_ui <- function(id) {
                status = "success",
                title = "Model prediction",
                width = 12,
-               footer = downloadBttn(NS(id, "download"), "Download simulation",
-                                     style = "material-flat"),
-               dropdownMenu = boxDropdown(
-                 boxDropdownItem(
-                   textInput(NS(id, "xlabel"), "x-label", "Time (min)"),
-                   textInput(NS(id, "ylabel"), "y-label", "Microbial count (log CFU/g)"),
-                   numericInput(NS(id, "ymin"), "min. y", 0),
-                   numericInput(NS(id, "ymax"), "max. y", 9)
+               footer = tagList(
+                 fluidRow(
+                   column(6,
+                          dropdownButton(
+                            circle = TRUE, status = "success", right = TRUE,
+                            icon = icon("gear"), width = "300px",
+                            textInput(NS(id, "xlabel"), "x-label", "Time (min)"),
+                            textInput(NS(id, "ylabel"), "y-label", "Microbial count (log CFU/g)"),
+                            numericInput(NS(id, "ymin"), "min. y", 0),
+                            numericInput(NS(id, "ymax"), "max. y", 9)
+                          )
+                   ),
+                   column(6, align = "right",
+                          downloadBttn(NS(id, "download"), "",
+                                       color = "success",
+                                       size = "lg",
+                                       style = "unite")
+                   )
                  )
                ),
-               plotOutput(NS(id, "plot_fit"))
+               plotlyOutput(NS(id, "plot_fit"))
              )
       )
     ),
@@ -289,11 +310,11 @@ stocpred_module_server <- function(id) {
 
     ## Output ------------------------------------------------------------------
 
-    output$plot_fit <- renderPlot({
+    output$plot_fit <- renderPlotly({
 
       validate(need(my_simulations(), ""))
 
-      my_simulations() %>%
+      p <- my_simulations() %>%
         imap_dfr(.,
                  ~ mutate(.x, sim = .y)
                  ) %>%
@@ -308,6 +329,8 @@ stocpred_module_server <- function(id) {
         geom_ribbon(aes(ymin = q05, ymax = q95), alpha = .5) +
         xlab(input$xlabel) + ylab(input$ylabel) +
         coord_cartesian(ylim = c(input$ymin, input$ymax))
+
+      ggplotly(p)
 
     })
 

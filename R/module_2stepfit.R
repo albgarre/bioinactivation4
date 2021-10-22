@@ -5,6 +5,8 @@ library(bs4Dash)
 library(tidyverse)
 library(bioinactivation)
 
+library(plotly)
+
 ## UI --------------------------------------------------------------------------
 
 fit2step_module_ui <- function(id) {
@@ -16,8 +18,22 @@ fit2step_module_ui <- function(id) {
              bs4Jumbotron(
                width = 12,
                status = "info",
+               btnName = NULL,
                title = "Fitting of isothermal data using a two-step approach",
-               "asfsa"
+               p(
+                 paste(
+                   "This model is designed to fit primary and secondary models following a two-step approach.",
+                   "The primary model is fitted for each temperature condition by non-linear regression.",
+                   "The model implements a heuristic to find realistic starting guesses for the model parameters.",
+                   "Once the primary models have been fitted, the secondary model is fitted on a second step (also by non-linear regression)."
+                   )
+               ),
+               p(
+                 paste(
+                   "When using Weibullian models (Peleg or Mafart), be mindful that, unlike usually recommended, this module does not fix the shape factor.",
+                   "Therefore, it is recommended to compare the results against those obtained using the one-step approach (which fixes a unique shape parameter)."
+                 )
+               )
              )
       )
     ),
@@ -47,7 +63,20 @@ fit2step_module_ui <- function(id) {
                width = 12,
                title = "Primary fits",
                status = "success",
-               plotOutput(NS(id, "plot_primary"))
+               plotlyOutput(NS(id, "plot_primary")),
+               footer = dropdownButton(
+                 circle = TRUE, status = "success", right = TRUE,
+                 icon = icon("gear"), width = "300px",
+                 textInput(NS(id, "xlabel"), "x-label", "Time (min)"),
+                 textInput(NS(id, "ylabel"), "y-label", "Microbial count (log CFU/g)"),
+                 colourInput(NS(id, "linecol"), "Line colour", "black"),
+                 numericInput(NS(id, "linesize"), "Line size", 1),
+                 numericInput(NS(id, "linetype"), "Line type",
+                              1, min = 0, step = 1),
+                 colourInput(NS(id, "pointcol"), "Point colour", "black"),
+                 numericInput(NS(id, "pointsize"), "Point size", 4),
+                 numericInput(NS(id, "pointshape"), "Point shape", 1, min = 0, step = 1)
+               )
              )
              )
     ),
@@ -79,6 +108,19 @@ fit2step_module_ui <- function(id) {
                hr(),
                fluidRow(
                  column(12, verbatimTextOutput(NS(id, "summary_secondary")))
+               ),
+               footer = dropdownButton(
+                 circle = TRUE, status = "success", right = TRUE,
+                 icon = icon("gear"), width = "300px",
+                 textInput(NS(id, "xlabel2"), "x-label", "Temperature (ºC)"),
+                 textInput(NS(id, "ylabel2"), "y-label", NULL),
+                 colourInput(NS(id, "linecol2"), "Line colour", "black"),
+                 numericInput(NS(id, "linesize2"), "Line size", 1),
+                 numericInput(NS(id, "linetype2"), "Line type",
+                              1, min = 0, step = 1),
+                 colourInput(NS(id, "pointcol2"), "Point colour", "black"),
+                 numericInput(NS(id, "pointsize2"), "Point size", 4),
+                 numericInput(NS(id, "pointshape2"), "Point shape", 1, min = 0, step = 1)
                )
              )
       )
@@ -279,25 +321,35 @@ fit2step_module_server <- function(id) {
 
     ## Output of the primary fit -----------------------------------------------
 
-    output$plot_primary <- renderPlot({
+    output$plot_primary <- renderPlotly({
 
       validate(
         need(primary_models(), "")
         )
 
-        my_predictions <- my_data() %>%
-          split(.$temperature) %>%
-          map2(., primary_models(),
-               ~ tibble(t = seq(0, max(.x$time), length = 100),
-                        logN = prediction_map[[input$model]](coef(.y), t)
-                        )
-               ) %>%
-          imap_dfr(., ~ mutate(.x, temperature = .y))
+      my_predictions <- my_data() %>%
+        split(.$temperature) %>%
+        map2(., primary_models(),
+             ~ tibble(t = seq(0, max(.x$time), length = 100),
+                      logN = prediction_map[[input$model]](coef(.y), t)
+             )
+        ) %>%
+        imap_dfr(., ~ mutate(.x, temperature = .y))
 
-        ggplot() +
-          geom_point(aes(x = time, y = logN), data = my_data()) +
-          geom_line(aes(x = t, y = logN), data = my_predictions) +
-          facet_wrap("temperature", scales = "free")
+      p <- ggplot() +
+        geom_point(aes(x = time, y = logN), data = my_data(),
+                   colour = input$pointcol,
+                   size = input$pointsize,
+                   shape = input$pointshape) +
+        geom_line(aes(x = t, y = logN), data = my_predictions,
+                  colour = input$linecol,
+                  size = input$linesize,
+                  linetype = input$linetype) +
+        facet_wrap("temperature", scales = "free") +
+        xlab(input$xlabel) +
+        ylab(input$ylabel)
+
+      ggplotly(p)
 
     })
 
@@ -371,28 +423,49 @@ fit2step_module_server <- function(id) {
 
       if (input$model == "Peleg") {
 
-        d %>%
+        p <- d %>%
           ggplot(aes(x = temperature)) +
-          geom_point(aes(y = b)) +
-          geom_line(aes(y = model))
+          geom_point(aes(y = b),
+                     colour = input$pointcol2,
+                     size = input$pointsize2,
+                     shape = input$pointshape2) +
+          geom_line(aes(y = model),
+                    colour = input$linecol2,
+                    size = input$linesize2,
+                    linetype = input$linetype2)
 
       } else if (input$model == "Mafart") {
 
-        d %>%
+        p <- d %>%
           mutate(log_delta = log10(delta)) %>%
           ggplot(aes(x = temperature)) +
-          geom_point(aes(y = log_delta)) +
-          geom_line(aes(y = model))
+          geom_point(aes(y = log_delta),
+                     colour = input$pointcol2,
+                     size = input$pointsize2,
+                     shape = input$pointshape2) +
+          geom_line(aes(y = model),
+                    colour = input$linecol2,
+                    size = input$linesize2,
+                    linetype = input$linetype2)
 
       } else {
 
-        d %>%
+        p <- d %>%
           mutate(logD = log10(D)) %>%
           ggplot(aes(x = temperature)) +
-          geom_point(aes(y = logD)) +
-          geom_line(aes(y = model))
+          geom_point(aes(y = logD),
+                     colour = input$pointcol2,
+                     size = input$pointsize2,
+                     shape = input$pointshape2) +
+          geom_line(aes(y = model),
+                    colour = input$linecol2,
+                    size = input$linesize2,
+                    linetype = input$linetype2)
 
       }
+
+      p + xlab(input$xlabel2) + ylab(input$ylabel2)
+
 
     })
 

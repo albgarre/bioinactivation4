@@ -5,6 +5,9 @@ library(bs4Dash)
 library(tidyverse)
 library(bioinactivation)
 
+library(plotly)
+library(FME)
+
 ## UI --------------------------------------------------------------------------
 
 isopred_module_ui <- function(id) {
@@ -13,10 +16,17 @@ isopred_module_ui <- function(id) {
     fluidRow(
       column(12,
              bs4Jumbotron(
+               btnName = NULL,
                width = 12,
                status = "info",
                title = "Model predictions based on primary models",
-               "asfsa"
+               p(paste0(
+                 "This module makes model predictions based on primary inactivation models.",
+                 "The solution is calculated based on the algebraic equation of the selected model."
+               )),
+               p(
+                 "Note that this module is intended for model predictions under constant conditions (e.g. isothermal). In case of dynamic conditions, it is recommended to use the appropriate module."
+               )
              )
              )
     ),
@@ -54,15 +64,31 @@ isopred_module_ui <- function(id) {
                status = "success",
                title = "Model predictions",
                width = 12,
-               dropdownMenu = boxDropdown(
-                 boxDropdownItem(
-                   textInput(NS(id, "xlabel"), "x-label", "Time (min)"),
-                   textInput(NS(id, "ylabel"), "y-label", "Microbial count (log CFU/g)")
+               # dropdownMenu = boxDropdown(
+               #   boxDropdownItem(
+               #     textInput(NS(id, "xlabel"), "x-label", "Time (min)"),
+               #     textInput(NS(id, "ylabel"), "y-label", "Microbial count (log CFU/g)")
+               #   )
+               # ),
+               plotlyOutput(NS(id, "plot_fit")),
+               footer = tagList(
+                 fluidRow(
+                   column(6,
+                          dropdownButton(
+                            circle = TRUE, status = "success", right = TRUE,
+                            icon = icon("gear"), width = "300px",
+                            textInput(NS(id, "xlabel"), "x-label", "Time (min)"),
+                            textInput(NS(id, "ylabel"), "y-label", "Microbial count (log CFU/g)")
+                          )
+                   ),
+                   column(6, align = "right",
+                          downloadBttn(NS(id, "download"), "",
+                                       color = "success",
+                                       size = "lg",
+                                       style = "unite")
+                   )
                  )
-               ),
-               plotOutput(NS(id, "plot_fit")),
-               footer = downloadBttn(NS(id, "download"), "Download simulations",
-                            style = "material-flat")
+               )
              )
       )
     ),
@@ -87,6 +113,56 @@ isopred_module_ui <- function(id) {
                )
              )
              )
+    ),
+    tableInput_module_ui(NS(id, "input_data"), box_title = "Compare against data",
+                         status = "primary", status_2 = "primary"),
+    fluidRow(
+      column(6,
+             bs4TabCard(
+               width = 12,
+               status = "warning",
+               type = "tabs",
+               title = "Visual analyses", side = "right",
+               tabPanel(
+                 "Predictions",
+                 status = "warning",
+                 plotOutput(NS(id, "pred_vs_data"))
+               ),
+               tabPanel(
+                 "Residual plot",
+                 status = "warning",
+                 plotOutput(NS(id, "res_plot"))
+               ),
+               tabPanel(
+                 "Histogram",
+                 status = "warning",
+                 plotOutput(NS(id, "res_hist"))
+               )
+             )
+             ),
+      column(6,
+             # bs4Card(
+             #   width = 12,
+             #   tableOutput(NS(id, "res_table"))
+             # )
+             bs4TabCard(
+               width = 12,
+               status = "warning",
+               # solidHeader = TRUE,
+               type = "tabs",
+               title = "Numerical analysis", side = "right",
+               tabPanel(
+                 "Residual table",
+                 status = "warning",
+                 tableOutput(NS(id, "res_table"))
+               ),
+               tabPanel(
+                 "Residual indexes",
+                 status = "warning",
+                 tableOutput(NS(id, "res_indexes"))
+               )
+             )
+             )
     )
   )
 
@@ -97,6 +173,102 @@ isopred_module_ui <- function(id) {
 isopred_module_server <- function(id) {
 
   moduleServer(id, function(input, output, session) {
+
+    ## Data validation ---------------------------------------------------------
+
+    my_data <- tableInput_module_server("input_data",
+                                        col_names = c("time", "logN"),
+                                        xvar = "time", yvar = "logN",
+                                        default_data = data.frame(
+                                          time = c(0, 1, 2, 3, 4, 5, 6),
+                                          logN = c(8, 7.2, 5.9, 5.4, 4.1, 3.6, 3.8)
+                                        )
+    )
+
+    my_res <- eventReactive(my_data(), {
+
+      my_predictions() %>%
+        map(., ~ select(., time, logN)) %>%
+        map(as.data.frame) %>%
+        map(.,
+            ~ modCost(model = .,
+                      obs = as.data.frame(my_data())
+                      )
+            )
+
+    })
+
+    output$res_table <- renderTable({
+
+      my_res() %>%
+        map(., ~ .$residuals) %>%
+        imap_dfr(., ~ mutate(.x, condition = .y)) %>%
+        select(condition, time = x, observed = obs, predicted = mod, residual = res)
+    })
+
+    output$res_indexes <- renderTable({
+      my_res() %>%
+        map(., ~ .$residuals) %>%
+        imap_dfr(., ~ mutate(.x, condition = .y)) %>%
+        mutate(res2 = res^2) %>%
+        group_by(condition) %>%
+        summarize(
+          ME = mean(res),
+          RMSE = sqrt(mean(res2))
+        )
+    })
+
+    output$pred_vs_data <- renderPlot({
+
+      validate(
+        need(my_predictions(), ""),
+        need(my_data(), "")
+      )
+
+      my_predictions() %>%
+        bind_rows() %>%
+        ggplot() +
+        geom_line(aes(x = time, y = logN, colour = sim)) +
+        xlab(input$xlabel) + ylab(input$ylabel) +
+        theme(legend.title = element_blank()) +
+        geom_point(aes(x = time, y = logN),
+                   data = my_data(),
+                   inherit.aes = FALSE)
+
+    })
+
+    output$res_hist <- renderPlot({
+      validate(
+        need(my_res(), "")
+      )
+
+      my_res() %>%
+        map(., ~ .$residuals) %>%
+        imap_dfr(., ~ mutate(.x, condition = .y)) %>%
+        ggplot() +
+        geom_histogram(aes(res, fill = condition), position = "dodge") +
+        geom_vline(xintercept = 0, linetype = 2) +
+        theme(legend.title = element_blank()) +
+        xlab("Residual (log CFU/g)") +
+        ylab("Count")
+
+    })
+
+    output$res_plot <- renderPlot({
+
+      validate(
+        need(my_res(), "")
+      )
+
+      my_res() %>%
+        map(., ~ .$residuals) %>%
+        imap_dfr(., ~ mutate(.x, condition = .y)) %>%
+        ggplot() +
+        geom_point(aes(x = x, y = res, colour = condition)) +
+        geom_hline(yintercept = 0, linetype = 2) +
+        theme(legend.title = element_blank()) +
+        xlab("Time (min)") + ylab("Residual (log CFU/g)")
+    })
 
     ## Download predictions
 
@@ -255,18 +427,20 @@ isopred_module_server <- function(id) {
 
     ## Output ------------------------------------------------------------------
 
-    output$plot_fit <- renderPlot({
+    output$plot_fit <- renderPlotly({
 
       validate(
         need(my_predictions(), "")
       )
 
-      my_predictions() %>%
+      p <- my_predictions() %>%
         bind_rows() %>%
         ggplot() +
         geom_line(aes(x = time, y = logN, colour = sim)) +
         xlab(input$xlabel) + ylab(input$ylabel) +
         theme(legend.title = element_blank())
+
+      ggplotly(p)
     })
 
     output$table_counts <- renderTable({

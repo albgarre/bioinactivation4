@@ -6,6 +6,8 @@ library(shinycssloaders)
 library(tidyverse)
 library(bioinactivation)
 
+library(plotly)
+
 ## UI --------------------------------------------------------------------------
 
 dynafit_module_ui <- function(id) {
@@ -16,8 +18,17 @@ dynafit_module_ui <- function(id) {
              bs4Jumbotron(
                width = 12,
                status = "info",
+               btnName = NULL,
                title = "Model fitting from dynamic data",
-               "asfsa"
+               p(
+                 paste(
+                   "This module is designed to fit both primary and secondary models to data gathered under dynamic conditions.",
+                   "The fitting algorithm combines a numeric solver for the differential equations with a fitting algorithm."
+                 )
+               ),
+               p(
+                 "Because these models usually suffer from poor parameter identifiability, the module implements both non-linear regression (Levenberg-Marquardt) and an Adatptive Monte Carlo algorithm."
+               )
              )
       )
     ),
@@ -86,20 +97,31 @@ dynafit_module_ui <- function(id) {
              bs4Card(
                status = "success",
                title = "Model fit", width = 12,
-               dropdownMenu = boxDropdown(
-                 boxDropdownItem(
-                   textInput(NS(id, "xlabel"), "x-label", "Time (min)"),
-                   textInput(NS(id, "ylabel"), "y-label", "Microbial count (log CFU/g)"),
-                   numericInput(NS(id, "miny"), "min. y", 0),
-                   numericInput(NS(id, "maxy"), "max. y", 11),
-                   prettySwitch(NS(id, "add_temp"), "Add temperature", slim = TRUE),
-                   conditionalPanel("input.add_temp == true", ns = NS(id),
-                                    textInput(NS(id, "ylabel2"), "Sec. y-label", "Temperature (ºC)")
+               footer = tagList(
+                 fluidRow(
+                   column(6,
+                          dropdownButton(
+                            circle = TRUE, status = "success", right = TRUE,
+                            icon = icon("gear"), width = "300px",
+                            textInput(NS(id, "xlabel"), "x-label", "Time (min)"),
+                            textInput(NS(id, "ylabel"), "y-label", "Microbial count (log CFU/g)"),
+                            numericInput(NS(id, "miny"), "min. y", 0),
+                            numericInput(NS(id, "maxy"), "max. y", 11),
+                            prettySwitch(NS(id, "add_temp"), "Add temperature", slim = TRUE),
+                            conditionalPanel("input.add_temp == true", ns = NS(id),
+                                             textInput(NS(id, "ylabel2"), "Sec. y-label", "Temperature (ºC)")
+                            )
+                          )
+                   ),
+                   column(6, align = "right",
+                          downloadBttn(NS(id, "download"), "",
+                                       color = "success",
+                                       size = "lg",
+                                       style = "unite")
                    )
-
                  )
                ),
-               plotOutput(NS(id, "plot_fit")) %>% withSpinner()
+               plotlyOutput(NS(id, "plot_fit")) %>% withSpinner()
              )
              )
     ),
@@ -140,7 +162,8 @@ dynafit_module_server <- function(id) {
                                                col_names = c("time", "temperature"),
                                                xvar = "time", yvar = "temperature",
                                                default_data = data.frame(time = c(0, 10, 20),
-                                                                         temperature = c(50, 60, 55))
+                                                                         temperature = c(50, 60, 55)),
+                                               add_lines = TRUE
     )
 
     my_counts <- tableInput_module_server("micro_data",
@@ -321,19 +344,22 @@ dynafit_module_server <- function(id) {
 
     ## Output ------------------------------------------------------------------
 
-    output$plot_fit <- renderPlot({
+    output$plot_fit <- renderPlotly({
 
       validate(
         need(my_fit(), "Fit the model first")
       )
 
-      plot(my_fit(),
+      p <- plot(my_fit(),
            plot_temp = input$add_temp,
            label_y1 = input$ylabel,
            label_y2 = input$ylabel2,
            ylims = c(input$miny, input$maxy)
            ) +
         xlab(input$xlabel)
+
+      ggplotly(p)
+
     })
 
     output$par_table <- renderTable({
@@ -367,6 +393,19 @@ dynafit_module_server <- function(id) {
       goodness_of_fit(my_fit())
 
     })
+
+    ## Download predictions
+
+    output$download <- downloadHandler(
+      filename = "inactivation-curve.csv",
+      content = function(file) {
+
+        my_fit()$best_prediction$simulation %>%
+          write_excel_csv(., path = file)
+        # write_excel_csv(static_prediction_list(), path = file)
+
+      }
+    )
 
     ## Diagnosis ---------------------------------------------------------------
 

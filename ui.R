@@ -70,17 +70,17 @@ ui <- bs4DashPage(
       menuItem(
         "Primary model",
         tabName = "fit_primary",
-        icon = icon("grip-lines")
+        icon = icon("circle")
       ),
       menuItem(
         "Two step",
         tabName = "fit_secondary",
-        icon = icon("sliders")
+        icon = icon("shoe-prints")
       ),
       menuItem(
         "One step",
         tabName = "fit_1step",
-        icon = icon("sliders")
+        icon = icon("hat-wizard")
       ),
       menuItem(
         "Dynamic",

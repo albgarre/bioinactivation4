@@ -7,6 +7,8 @@ library(bioinactivation)
 
 library(rhandsontable)
 
+library(plotly)
+
 ## UI --------------------------------------------------------------------------
 
 fit1step_module_ui <- function(id) {
@@ -17,17 +19,22 @@ fit1step_module_ui <- function(id) {
              bs4Jumbotron(
                width = 12,
                status = "info",
+               btnName = NULL,
                title = "Fitting of isothermal data using a one-step approach",
-               "asfsa"
+               p(
+                 paste(
+                   "This module implements a one-step fitting approach for data gathered under isothermal conditions."
+                 )
+               )
              )
       )
     ),
     tableInput_module_ui(NS(id, "input_data"), box_title = "Input data",
                          status = "primary", status_2 = "primary"),
     fluidRow(
-      column(12,
+      column(6,
              bs4Card(
-               width = 6,
+               width = 12,
                title = "Model parameters",
                status = "primary",
                # footer = actionBttn(NS(id, "fit"), "Fit model", style = "material-flat"),
@@ -50,18 +57,31 @@ fit1step_module_ui <- function(id) {
                  )
                )
              )
-             )
-    ),
-    fluidRow(
-      column(12,
+             ),
+      column(6,
              bs4Card(title = "Fitted curves", status = "success",
                      width = 12,
                      maximizable = TRUE,
-                     plotOutput(NS(id, "fitted_curve"))
+                     plotlyOutput(NS(id, "fitted_curve")),
+                     footer = dropdownButton(
+                       circle = TRUE, status = "success", right = TRUE,
+                       icon = icon("gear"), width = "300px",
+                       textInput(NS(id, "xlabel"), "x-label", "Treatment time (min)"),
+                       textInput(NS(id, "ylabel"), "y-label", "logS (log CFU/g)")
+                     )
              )
              )
-
     ),
+    # fluidRow(
+    #   column(12,
+    #          bs4Card(title = "Fitted curves", status = "success",
+    #                  width = 12,
+    #                  maximizable = TRUE,
+    #                  plotlyOutput(NS(id, "fitted_curve"))
+    #          )
+    #          )
+    #
+    # ),
     fluidRow(
       column(6,
              bs4Card(
@@ -196,10 +216,14 @@ fit1step_module_server <- function(id) {
 
     ## Model output ------------------------------------------------------------
 
-    output$fitted_curve <- renderPlot({
-      plot(my_fit(), make_gg = TRUE) +
-        xlab("Treatment time (min)") +
-        ylab("logS (log CFU/g)")
+    output$fitted_curve <- renderPlotly({
+
+      p <- plot(my_fit(), make_gg = TRUE) +
+        xlab(input$xlabel) +
+        ylab(input$ylabel)
+
+      ggplotly(p)
+
     })
 
     output$residual_statistics <- renderTable({

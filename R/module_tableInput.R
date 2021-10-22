@@ -79,7 +79,8 @@ tableInput_module_server <- function(id,
                                      col_names = c("time", "logN"),
                                      default_data = data.frame(time = c(0, 1, 2),
                                                                logN = c(6, 5, 4)),
-                                     xvar = "time", yvar = "logN", colvar = NULL
+                                     xvar = "time", yvar = "logN", colvar = NULL,
+                                     add_points = TRUE, add_lines = FALSE
                                      ) {
 
   moduleServer(id, function(input, output, session) {
@@ -168,8 +169,19 @@ tableInput_module_server <- function(id,
 
     output$plot <- renderPlot({
 
-      ggplot(my_data()) +
-        geom_point(aes_string(x = xvar, y = yvar, colour = colvar))
+      p <- ggplot()
+
+      if (isTRUE(add_points)) {
+        p <- p + geom_point(aes_string(x = xvar, y = yvar, colour = colvar),
+                            data = my_data())
+      }
+
+      if (isTRUE(add_lines)) {
+        p <- p + geom_line(aes_string(x = xvar, y = yvar, colour = colvar),
+                            data = my_data())
+      }
+
+      p
 
     })
 

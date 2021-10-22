@@ -7,6 +7,8 @@ library(colourpicker)
 library(tidyverse)
 
 library(FME)
+# library(FSK2R)
+library(plotly)
 
 ## UI --------------------------------------------------------------------------
 
@@ -18,8 +20,15 @@ primary_module_ui <- function(id) {
              bs4Jumbotron(
                width = 12,
                status = "info",
+               btnName = NULL,
                title = "Fitting of primary inactivation models",
-               "asfsa"
+               p(
+                 paste(
+                   "This module fits a single primary model to experimental data.",
+                   "It is designed to describe data where every point was obtained under the same condition (e.g. the same temperature).",
+                   "Otherwise, it is recommended to use a different module."
+                 )
+               )
              )
       )
     ),
@@ -47,22 +56,37 @@ primary_module_ui <- function(id) {
                status = "success",
                title = "Model fit",
                width = 12,
-               footer = downloadBttn(NS(id, "download"), "Download fitted curve",
-                                     style = "material-flat"),
-               plotOutput(NS(id, "plot_fit")),
-               dropdownMenu = boxDropdown(
-                 boxDropdownItem(
-                   textInput(NS(id, "xlabel"), "x-label", "Time (min)"),
-                   textInput(NS(id, "ylabel"), "y-label", "Microbial count (log CFU/g)"),
-                   colourInput(NS(id, "linecol"), "Line colour", "black"),
-                   numericInput(NS(id, "linesize"), "Line size", 1),
-                   numericInput(NS(id, "linetype"), "Line type",
-                               1, min = 0, step = 1),
-                   colourInput(NS(id, "pointcol"), "Point colour", "black"),
-                   numericInput(NS(id, "pointsize"), "Point size", 5),
-                   numericInput(NS(id, "pointshape"), "Point shape", 1, min = 0, step = 1)
+               # footer = downloadBttn(NS(id, "download"), "Download fitted curve",
+               #                       style = "material-flat"),
+               footer = tagList(
+                 fluidRow(
+                   column(6,
+                          dropdownButton(
+                            circle = TRUE, status = "success", right = TRUE,
+                            icon = icon("gear"), width = "300px",
+                            textInput(NS(id, "xlabel"), "x-label", "Time (min)"),
+                            textInput(NS(id, "ylabel"), "y-label", "Microbial count (log CFU/g)"),
+                            colourInput(NS(id, "linecol"), "Line colour", "black"),
+                            numericInput(NS(id, "linesize"), "Line size", 1),
+                            numericInput(NS(id, "linetype"), "Line type",
+                                         1, min = 0, step = 1),
+                            colourInput(NS(id, "pointcol"), "Point colour", "black"),
+                            numericInput(NS(id, "pointsize"), "Point size", 5),
+                            numericInput(NS(id, "pointshape"), "Point shape", 1, min = 0, step = 1)
+                          )
+
+                   ),
+                   column(6, align = "right",
+                          downloadBttn(NS(id, "download"), "",
+                                       color = "success",
+                                       size = "lg",
+                                       # width = "300px",
+                                       style = "unite")
+                   )
+
                  )
-               )
+               ),
+               plotlyOutput(NS(id, "plot_fit"))
              )
              )
     ),
@@ -98,7 +122,44 @@ primary_module_ui <- function(id) {
                )
              )
              )
-    )
+    )# ,
+    # fluidRow(
+    #   column(6,
+    #          bs4TabCard(title = "Export as FSK-ML", status = "danger",
+    #                     width = 12, type = "tabs", side = "right",
+    #                     tabPanel("General Information",
+    #                              textInput(NS(id, "fsk_pred_name"), "Model name"),
+    #                              textInput(NS(id, "fsk_pred_source"), "Source"),
+    #                              textInput(NS(id, "fsk_pred_identifier"), "Identifier"),
+    #                              dateInput(NS(id, "fsk_pred_date"), "Creation Date"),
+    #                              textInput(NS(id, "fsk_pred_rights"), "Rights", value = "Creative Commons Attribution-NonCommercial 4.0"),
+    #                              textInput(NS(id, "fsk_pred_language"), "Language", value = "English"),
+    #                              tags$h4("Creators"),
+    #                              rHandsontableOutput(NS(id, "fsk_pred_creators")),
+    #                              tags$h4("Authors"),
+    #                              rHandsontableOutput(NS(id, "fsk_pred_authors")),
+    #                              tags$h4("Reference"),
+    #                              rHandsontableOutput(NS(id, "fsk_pred_reference"))
+    #                     ),
+    #                     tabPanel("Scope",
+    #                              textInput(NS(id, "fsk_pred_genCom"), "General comment"),
+    #                              tags$h4("Product/Matrix"),
+    #                              rHandsontableOutput(NS(id, "fsk_pred_product")),
+    #                              tags$h4("Hazard"),
+    #                              rHandsontableOutput(NS(id, "fsk_pred_hazard"))
+    #                     ),
+    #                     tabPanel("Data background",
+    #                              textInput(NS(id, "fsk_pred_studyTitle"), "Study title")
+    #                     ),
+    #                     tabPanel("Model math",
+    #                              rHandsontableOutput(NS(id, "fsk_pred_model"))
+    #                     ),
+    #                     tabPanel("Export",
+    #                              downloadButton(NS(id, "fsk_pred_download"), "Download")
+    #                     )
+    #          )
+    #   )
+    # )
   )
 
 }
@@ -109,8 +170,361 @@ primary_module_server <- function(id) {
 
   moduleServer(id, function(input, output, session) {
 
+    ## FSK2R -------------------------------------------------------------------
 
-    ## Download predictions
+    # ## General info
+    #
+    # output$fsk_pred_creators <- renderRHandsontable({
+    #   # rhandsontable(data.frame(Email = c("google@chucknorris.com", NA), `Family name` = c("Doe", NA), `Given Name` = c("Jon", NA)),
+    #   #               rowHeaders = NULL, readOnly = FALSE
+    #   #               )
+    #
+    #   default_data <- data.frame(
+    #     title = "",
+    #     familyName = "",
+    #     givenName = "",
+    #     email = "",
+    #     telephone = "",
+    #     streetAdress = "",
+    #     country = "",
+    #     city = "",
+    #     region = "",
+    #     organization = "",
+    #     stringsAsFactors = FALSE
+    #   )
+    #
+    #   if (!is.null(input$fsk_pred_creators)) {
+    #     DF = hot_to_r(input$fsk_pred_creators)
+    #   } else {
+    #     DF = default_data
+    #   }
+    #
+    #   DF %>%
+    #     rhandsontable() %>%
+    #     hot_table(highlightCol = TRUE, highlightRow = TRUE)
+    # })
+    #
+    # output$fsk_pred_authors <- renderRHandsontable({
+    #
+    #   default_data <- data.frame(
+    #     title = "",
+    #     familyName = "",
+    #     givenName = "",
+    #     email = "",
+    #     telephone = "",
+    #     streetAdress = "",
+    #     country = "",
+    #     city = "",
+    #     region = "",
+    #     organization = "",
+    #     stringsAsFactors = FALSE
+    #   )
+    #
+    #   if (!is.null(input$fsk_pred_authors)) {
+    #     DF = hot_to_r(input$fsk_pred_authors)
+    #   } else {
+    #     DF = default_data
+    #   }
+    #
+    #   DF %>%
+    #     rhandsontable() %>%
+    #     hot_table(highlightCol = TRUE, highlightRow = TRUE)
+    # })
+    #
+    # output$fsk_pred_reference <- renderRHandsontable({
+    #
+    #   default_data <- data.frame(
+    #     publicationType = "",
+    #     publicationDate = "",
+    #     doi = "",
+    #     authorList = "",
+    #     publicationTitle = "",
+    #     publicationAbstract = "",
+    #     publicationStatus = "",
+    #     publicationWebsite = "",
+    #     comment = "",
+    #     stringsAsFactors = FALSE
+    #   )
+    #
+    #   if (!is.null(input$fsk_pred_reference)) {
+    #     DF = hot_to_r(input$fsk_pred_reference)
+    #   } else {
+    #     DF = default_data
+    #   }
+    #
+    #   DF %>%
+    #     rhandsontable() %>%
+    #     hot_table(highlightCol = TRUE, highlightRow = TRUE)
+    # })
+    #
+    # ## Scope
+    #
+    # output$fsk_pred_product <- renderRHandsontable({
+    #
+    #   default_data <- data.frame(
+    #     productName = "",
+    #     productDescription = "",
+    #     productUnit = "",
+    #     productionMethod = "",
+    #     packaging = "",
+    #     productTreatment = "",
+    #     originCountry = "",
+    #     originArea = "",
+    #     fisheriesArea = "",
+    #     productionDate = "",
+    #     expiryDate = ""
+    #   )
+    #
+    #   if (!is.null(input$fsk_pred_product)) {
+    #     DF = hot_to_r(input$fsk_pred_product)
+    #   } else {
+    #     DF = default_data
+    #   }
+    #
+    #   DF %>%
+    #     rhandsontable() %>%
+    #     hot_table(highlightCol = TRUE, highlightRow = TRUE)
+    # })
+    #
+    #
+    # output$fsk_pred_hazard <- renderRHandsontable({
+    #
+    #   default_data <- data.frame(
+    #     hazardType = "",
+    #     hazardName = "",
+    #     hazardDescription = "",
+    #     hazardUnit = "",
+    #     adverseEffect = "",
+    #     sourceOfContamination = "",
+    #     maximumResidueLimit = "",
+    #     noObservedAdverseAffectLevel = "",
+    #     lowestObservedAdverseAffectLevel = "",
+    #     acceptableOperatorExposureLevel = "",
+    #     acuteReferenceDose = "",
+    #     acceptableDailyIntake = ""
+    #   )
+    #
+    #   if (!is.null(input$fsk_pred_hazard)) {
+    #     DF = hot_to_r(input$fsk_pred_hazard)
+    #   } else {
+    #     DF = default_data
+    #   }
+    #
+    #   DF %>%
+    #     rhandsontable() %>%
+    #     hot_table(highlightCol = TRUE, highlightRow = TRUE)
+    # })
+    #
+    # ## Model math
+    #
+    # par_description_map <- tribble(
+    #   ~parameter, ~description,
+    #   "D",  "Treatment time required for one log-reduction",
+    #   "logN0", "log-initial microbial count",
+    #   "delta", "Treatment time required for the first log-reduction",
+    #   "p", "Shape factor of the Weibull distribution",
+    #   "b", "Rate parameter of the Peleg model",
+    #   "n", "Shape factor of the Weibull distribution",
+    #   "SL", "Shoulder length",
+    #   "logNres", "Tail height"
+    #
+    # )
+    #
+    # output$fsk_pred_model <- renderRHandsontable({
+    #
+    #   ## Get the known pars
+    #
+    #   par_names <- model_map[[input$model]]
+    #
+    #   known <- list()
+    #
+    #   for (i in par_names) {
+    #
+    #
+    #     if (isTRUE(input[[paste0(i, "_fixed")]])) {
+    #       known[[i]] <- input[[i]]
+    #     }
+    #
+    #   }
+    #
+    #   known <- unlist(known)
+    #
+    #   ## Get the fitted parameters
+    #
+    #   aa <- summary(my_fit())$par %>%
+    #     as_tibble(rownames = "Parameter") %>%
+    #     select(Parameter, Estimate)
+    #
+    #   out <- aa$Estimate
+    #   names(out) <- aa$Parameter
+    #
+    #   ## Put them together with the map
+    #
+    #   out <- data.frame(parameter = names(c(known, out)),
+    #                     estimate = c(known, out),
+    #                     unit = "",
+    #                     `Min value` = 0,
+    #                     `Max value` = "") %>%
+    #     left_join(., par_description_map, by = "parameter")
+    #
+    #   rhandsontable(out,
+    #                 rowHeaders = NULL, readOnly = FALSE
+    #   )
+    # })
+    #
+    # ## Download
+    #
+    # output$fsk_pred_download <- downloadHandler(
+    #   filename = "isofit_model.fskx",
+    #   content = function(file) {
+    #
+    #     ## Import the 'basic' model
+    #
+    #     my_fsk <- import_fsk("fskBioinactivation.fskx")
+    #
+    #     ## Metadata - general informatino
+    #
+    #     my_fsk$metadata$generalInformation$name <- input$fsk_pred_name
+    #     my_fsk$metadata$generalInformation$source <- input$fsk_pred_source
+    #     my_fsk$metadata$generalInformation$identifier <- input$fsk_pred_identifier
+    #     my_fsk$metadata$generalInformation$creationDate <- input$fsk_pred_date
+    #     my_fsk$metadata$generalInformation$rights <- input$fsk_pred_rights
+    #     my_fsk$metadata$generalInformation$language <- input$fsk_pred_language
+    #
+    #     creators <- hot_to_r(input$fsk_pred_creators) %>%
+    #       mutate(eClass = "http://BfR/bund/de/knime/model/metadata_V1.0.3#//Contact")
+    #
+    #     authors <- hot_to_r(input$fsk_pred_authors) %>%
+    #       mutate(eClass = "http://BfR/bund/de/knime/model/metadata_V1.0.3#//Contact")
+    #
+    #     refs <- hot_to_r(input$fsk_pred_reference) %>%
+    #       mutate(eClass = "http://BfR/bund/de/knime/model/metadata_V1.0.3#//Reference",
+    #              isReferenceDescription = TRUE
+    #       )
+    #
+    #     my_fsk$metadata$generalInformation$creators <- apply(creators, 1, as.list)
+    #     my_fsk$metadata$generalInformation$author <- apply(authors, 1, as.list)
+    #     my_fsk$metadata$generalInformation$reference <- apply(refs, 1, as.list)
+    #
+    #     ## Metadata - scope
+    #
+    #     my_fsk$metadata$scope$generalComment <- input$fsk_pred_genCom
+    #
+    #
+    #     prods <- hot_to_r(input$fsk_pred_product) %>%
+    #       mutate(eClass = "http://BfR/bund/de/knime/model/metadata_V1.0.3#//Product")
+    #
+    #     my_fsk$metadata$scope$product <- apply(prods, 1, as.list)
+    #
+    #     haz <- hot_to_r(input$fsk_pred_hazard) %>%
+    #       mutate(eClass = "http://BfR/bund/de/knime/model/metadata_V1.0.3#//Hazard")
+    #
+    #     my_fsk$metadata$scope$hazard <- apply(haz, 1, as.list)
+    #
+    #     ## Metadata - data background
+    #
+    #     my_fsk$metadata$dataBackground$study <- input$fsk_pred_studyTitle
+    #
+    #     ## Metadata - model parameters
+    #
+    #     model_name <- paste0("'", input$model, "'")
+    #     max_time <- max(my_data()$time)
+    #
+    #     times <- paste0("seq(0, ", max_time, ", length=100)")
+    #
+    #     # my_temperature <- as.data.frame(pred_temp_profile()) %>%
+    #     #   filter(!is.na(temperature))
+    #     #
+    #     # time_points <- my_temperature$time
+    #     # temp_points <- my_temperature$temperature
+    #
+    #     # time_points <- paste(time_points, collapse = ",")
+    #     # time_points <- paste0("c(", time_points, ")")
+    #     # temp_points <- paste(temp_points, collapse = ",")
+    #     # temp_points <- paste0("c(", temp_points, ")")
+    #
+    #     par_table <- hot_to_r(input$fsk_pred_model) %>%
+    #       rename(parameterID = parameter,
+    #              parameterUnit = unit,
+    #              parameterDescription = description,
+    #              parameterValueMin = Min.value,
+    #              parameterValueMax = Max.value,
+    #              parameterValue = estimate
+    #       ) %>%
+    #       mutate(eClass = "http://BfR/bund/de/knime/model/metadata_V1.0.3#//Parameter",
+    #              parameterName = parameterID,
+    #              parameterClassification = "Input",
+    #              parameterUnitCategory = "NA",
+    #              parameterDataType = "Double",
+    #              parameterSource = "NA",
+    #              parameterSubject = "NA",
+    #              parameterDistribution = "Constant",
+    #              parameterVariabilitySubject = "NA",
+    #              parameterError = "NA"
+    #       )
+    #
+    #     other_pars <- tibble(parameterID = c("model_name", "max_time"),
+    #                          parameterName = c("model_name", "max_time"),
+    #                          parameterDescription = c("Inactivation model", "Maximum time for the simulation"),
+    #                          parameterValue = c(model_name, max_time),
+    #                          eClass ="http://BfR/bund/de/knime/model/metadata_V1.0.3#//Parameter",
+    #                          parameterUnit = "",
+    #                          parameterValueMin = "",
+    #                          parameterValueMax = "",
+    #                          parameterClassification = "Input",
+    #                          parameterUnitCategory = "NA",
+    #                          parameterDataType = c("Character", "Double"),
+    #                          parameterSource = "NA",
+    #                          parameterSubject = "NA",
+    #                          parameterDistribution = "Constant",
+    #                          parameterVariabilitySubject = "NA",
+    #                          parameterError = "NA")
+    #
+    #     list_par_table <- apply(par_table, 1, as.list)
+    #     list_par_other <- apply(other_pars, 1, as.list)
+    #
+    #     my_fsk$metadata$modelMath$parameter <- c(list_par_table, list_par_other)
+    #
+    #     ## Define the simulation
+    #
+    #     par_sims <- lapply(1:nrow(par_table), function(i) {
+    #
+    #       new_elem <- list()
+    #       attr(new_elem, "newValue") <- par_table$parameterValue[i]
+    #       attr(new_elem, "target") <- par_table$parameterID[i]
+    #       new_elem
+    #
+    #     })
+    #
+    #     other_sims <- lapply(1:nrow(other_pars), function(i) {
+    #
+    #       new_elem <- list()
+    #       attr(new_elem, "newValue") <- other_pars$parameterValue[i]
+    #       attr(new_elem, "target") <- other_pars$parameterID[i]
+    #       new_elem
+    #
+    #     })
+    #
+    #     my_sims <- c(par_sims, other_sims)
+    #
+    #     my_sims <- set_names(my_sims, rep("changeAttribute", length(my_sims)))
+    #
+    #     # print(my_sims)
+    #
+    #     my_fsk$simulation$sedML$listOfModels$model$listOfChanges <- my_sims
+    #
+    #     ## Export the model
+    #
+    #     export_fsk(my_fsk, file)
+    #
+    #
+    #     # file.copy("ToyModelv4.fskx", file)
+    #   }
+    # )
+
+
+
+    ## Download predictions ----------------------------------------------------
 
     output$download <- downloadHandler(
       filename = "fitted-primary.csv",
@@ -315,10 +729,10 @@ primary_module_server <- function(id) {
 
     ## Output ------------------------------------------------------------------
 
-    output$plot_fit <- renderPlot({
+    output$plot_fit <- renderPlotly({
 
       validate(
-        need(my_fit(), "Fit the model first")
+        need(my_fit(), "")
       )
 
       ## Get the known pars
@@ -340,7 +754,7 @@ primary_module_server <- function(id) {
 
       ## Make the plot
 
-      my_data() %>%
+      p <- my_data() %>%
         # mutate(pred = prediction_map[[input$model]](time, my_fit()$par)) %>%
         ggplot() +
         geom_point(aes(x=time, y = logN),
@@ -355,6 +769,8 @@ primary_module_server <- function(id) {
                   ) +
         xlab(input$xlabel) + ylab(input$ylabel)
         # geom_line(aes(x = time, y = pred))
+
+      ggplotly(p)
 
     })
 
@@ -381,7 +797,8 @@ primary_module_server <- function(id) {
        ggplot() +
        geom_point(aes(x = time, y = res)) +
        xlab("Treatment time (min)") +
-       ylab("Residual (log CFU/g)")
+       ylab("Residual (log CFU/g)") +
+       geom_hline(yintercept = 0, linetype = 2)
 
    })
 
