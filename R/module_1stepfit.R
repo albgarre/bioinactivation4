@@ -88,6 +88,7 @@ fit1step_module_ui <- function(id) {
                title = "Fitted parameters", status = "warning",
                width = 12,
                collapsible = TRUE,
+               verbatimTextOutput(NS(id, "pars_summary")),
                tableOutput(NS(id, "pars_table")),
                hr(),
                tableOutput(NS(id, "residual_statistics"))
@@ -230,10 +231,16 @@ fit1step_module_server <- function(id) {
       goodness_of_fit(my_fit())
     })
 
+    output$pars_summary <- renderPrint({
+      summary(my_fit())
+    })
+
     output$pars_table <- renderTable({
       summary(my_fit())$parameters %>%
         as_tibble(rownames = "Parameter") %>%
-        select(-`t value`, -`Pr(>|t|)`)
+        select(-`t value`, -`Pr(>|t|)`) %>%
+        mutate(`CI 95% left` = Estimate - 1.96*`Std. Error`,
+               `CI 95% right` = Estimate + 1.96*`Std. Error`)
     })
 
     output$residual_plot <- renderPlot({

@@ -96,6 +96,9 @@ primary_module_ui <- function(id) {
                width = 12,
                status = "warning",
                title = "Parameter estimates",
+               fluidRow(
+                 verbatimTextOutput(NS(id, "par_summary")),
+               ),
                fluidRow(tableOutput(NS(id, "par_table"))),
                fluidRow(tableOutput(NS(id, "res_table")))
              )
@@ -774,22 +777,36 @@ primary_module_server <- function(id) {
 
     })
 
+    output$par_summary <- renderPrint({
+
+      validate(
+        need(my_fit(), "")
+      )
+
+      summary(my_fit())
+
+    })
+
    output$par_table <- renderTable({
 
      validate(
-       need(my_fit(), "Fit the model first")
+       need(my_fit(), "")
      )
 
      summary(my_fit())$par %>%
        as_tibble(rownames = "Parameter") %>%
-       select(-`t value`, -`Pr(>|t|)`)
+       select(-`t value`, -`Pr(>|t|)`) %>%
+       mutate(
+         `CI 95% left` = Estimate - 1.96*`Std. Error`,
+         `CI 95% right` = Estimate + 1.96*`Std. Error`
+       )
 
    })
 
    output$residual_plot <- renderPlot({
 
      validate(
-       need(my_fit(), "Fit the model first")
+       need(my_fit(), "")
      )
 
      my_data() %>%

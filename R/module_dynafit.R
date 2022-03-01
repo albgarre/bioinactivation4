@@ -97,6 +97,7 @@ dynafit_module_ui <- function(id) {
              bs4Card(
                status = "success",
                title = "Model fit", width = 12,
+               maximizable = TRUE,
                footer = tagList(
                  fluidRow(
                    column(6,
@@ -130,6 +131,7 @@ dynafit_module_ui <- function(id) {
              bs4Card(
                title = "Parameter estimates",
                status = "warning", width = 12,
+               verbatimTextOutput(NS(id, "par_summary")),
                tableOutput(NS(id, "par_table")),
                tableOutput(NS(id, "res_table"))
              )
@@ -362,17 +364,29 @@ dynafit_module_server <- function(id) {
 
     })
 
+    output$par_summary <- renderPrint({
+
+      validate(
+        need(my_fit(), "")
+      )
+
+      summary(my_fit())
+
+    })
+
     output$par_table <- renderTable({
 
       validate(
-        need(my_fit(), "Fit the model first")
+        need(my_fit(), "")
       )
 
       if (isTRUE(is.FitInactivation(my_fit()))) {
 
         summary(my_fit())$par %>%
           as_tibble(rownames = "Parameter") %>%
-          select(Parameter, Estimate, `Std. Error`)
+          select(Parameter, Estimate, `Std. Error`) %>%
+          mutate(`CI 95% left` = Estimate - 1.96*`Std. Error`,
+                 `CI 95% right` = Estimate + 1.96*`Std. Error`)
 
       } else {
 
