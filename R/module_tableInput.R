@@ -118,6 +118,7 @@ tableInput_module_server <- function(id,
 
     output$hot = renderRHandsontable({
       if (!is.null(input$hot)) {
+        # browser()
         DF <- hot_to_r(input$hot)
       } else {
         DF <- default_data
@@ -173,12 +174,14 @@ tableInput_module_server <- function(id,
 
       if (isTRUE(add_points)) {
         p <- p + geom_point(aes_string(x = xvar, y = yvar, colour = colvar),
-                            data = my_data())
+                            data = my_data()) +
+          scale_color_binned(type = "viridis")
       }
 
       if (isTRUE(add_lines)) {
         p <- p + geom_line(aes_string(x = xvar, y = yvar, colour = colvar),
-                            data = my_data())
+                            data = my_data()) +
+          scale_color_binned(type = "viridis")
       }
 
       p
