@@ -93,9 +93,11 @@ ui <- bs4DashPage(
       id = "doc_menu",
       sidebarHeader("Documentation"),
       menuItem(
-        "Manual",
+        "Documentation",
         tabName = "manual",
-        icon = icon("book")
+        icon = icon("book"),
+        # href = "https://www.google.com/",
+        newTab = TRUE
       ),
       menuItem(
         "About",
@@ -110,6 +112,28 @@ ui <- bs4DashPage(
   body = dashboardBody(
 
     tabItems(
+      tabItem(
+        tabName = "manual",
+        fluidRow(
+          bs4Card(title = "Online documentation", width = 6,
+                  solidHeader = TRUE,
+                  status = "info",
+                  collapsible = FALSE,
+                  icon = icon("book"),
+                  label = bs4CardLabel(text = "new", status = "white"),
+                  a("User manual", href="https://docs.google.com/document/d/1W8z6uwc7UGbSvOleOqmBCYsdwfa5pnTJuizSaUrWDfQ/edit?usp=sharing")
+                  ),
+          bs4Card(title = "Training material", width = 6,
+                  solidHeader = TRUE,
+                  status = "info",
+                  collapsible = FALSE,
+                  icon = icon("book")
+                  # label = bs4CardLabel(text = "new", status = "white"),
+                  # a("User manual", href="https://www.google.com/")
+          ),
+        )
+
+      ),
       tabItem(
         tabName = "pred_iso",
         isopred_module_ui("module_isopred")
