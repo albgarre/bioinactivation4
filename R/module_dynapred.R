@@ -277,6 +277,7 @@ dynapred_module_server <- function(id) {
 
     my_temperature <- tableInput_module_server("temp_profile",
                                                col_names = c("time", "temperature"),
+                                               add_lines = TRUE,
                                                xvar = "time", yvar = "temperature",
                                                default_data = data.frame(time = c(0, 10, 20),
                                                                          temperature = c(50, 60, 55))
