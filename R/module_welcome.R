@@ -15,7 +15,7 @@ welcome_module_ui <- function(id) {
              bs4Jumbotron(
                status = "warning",
                title = "bioinactivation",
-               lead = h4("Reducing stress and anxiety since 2017"),
+               lead = h4("Now with a dark mode!"),
                btnName = NULL
              )
       )
