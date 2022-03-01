@@ -206,7 +206,11 @@ dynapred_module_server <- function(id) {
 
     output$res_table <- renderTable({
 
-      my_res()$residuals
+      my_res()$residuals %>%
+        select(Time = x,
+               Observed = obs,
+               Predicted = mod,
+               Residual = res)
 
     })
 
