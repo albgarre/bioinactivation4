@@ -187,7 +187,8 @@ fit1step_module_server <- function(id) {
       ## Get the data
 
       d <- my_data() %>%
-        rename(time = time, temp = temperature, log_diff = logS)
+        select(time = time, temp = temperature, log_diff = logS) %>%
+        na.omit()
 
       ## Get the parameters
 
@@ -247,6 +248,7 @@ fit1step_module_server <- function(id) {
 
       my_fit() %>%
         .$data %>%
+        na.omit() %>%
         mutate(res = residuals(summary(my_fit()))) %>%
         mutate(temperature = factor(temp)) %>%
         ggplot() +
@@ -260,6 +262,7 @@ fit1step_module_server <- function(id) {
 
       my_fit() %>%
         .$data %>%
+        na.omit() %>%
         mutate(res = residuals(summary(my_fit()))) %>%
         mutate(temperature = factor(temp)) %>%
         ggplot() +
