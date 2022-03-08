@@ -556,7 +556,7 @@ primary_module_server <- function(id) {
 
         ## Output the prediction
 
-        tibble(time = seq(0, max(my_data()$time), length = 1000),
+        tibble(time = seq(0, max(my_data()$time, na.rm = TRUE), length = 1000),
                logN = prediction_map[[input$model]](c(my_fit()$par, known), time)
                ) %>%
           write_excel_csv(., path = file)
@@ -722,7 +722,7 @@ primary_module_server <- function(id) {
 
       ## Fit the model
 
-      out <- modFit(get_residuals, p, data = my_data(), model = input$model, known = known)
+      out <- modFit(get_residuals, p, data = na.omit(my_data()), model = input$model, known = known)
       my_fit(out)
     })
 
@@ -767,7 +767,7 @@ primary_module_server <- function(id) {
         geom_line(aes(x, y), colour = input$linecol,
                   size = input$linesize,
                   linetype = input$linetype,
-                  data = tibble(x = seq(0, max(my_data()$time), length = 1000),
+                  data = tibble(x = seq(0, max(my_data()$time, na.rm = TRUE), length = 1000),
                                 y = prediction_map[[input$model]](c(my_fit()$par, known), x))
                   ) +
         xlab(input$xlabel) + ylab(input$ylabel)
@@ -810,6 +810,7 @@ primary_module_server <- function(id) {
      )
 
      my_data() %>%
+       na.omit() %>%
        mutate(res = residuals(my_fit())) %>%
        ggplot() +
        geom_point(aes(x = time, y = res)) +
