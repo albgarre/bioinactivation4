@@ -281,6 +281,7 @@ fit2step_module_server <- function(id) {
       ## Get the initial guesses of the parameters
 
       initial_guess <- my_data() %>%
+        na.omit() %>%
         split(.$temperature) %>%
         map(.,
             ~ get_initialguess(input$model, .)
@@ -291,6 +292,7 @@ fit2step_module_server <- function(id) {
       ## Fit the model
 
       out <- my_data() %>%
+        na.omit() %>%
         split(.$temperature) %>%
         map2(., initial_guess,
              ~ modFit(get_residuals, .y, data = .x, model = input$model, known = c())
@@ -328,6 +330,7 @@ fit2step_module_server <- function(id) {
         )
 
       my_predictions <- my_data() %>%
+        na.omit() %>%
         split(.$temperature) %>%
         map2(., primary_models(),
              ~ tibble(t = seq(0, max(.x$time), length = 100),
@@ -337,7 +340,7 @@ fit2step_module_server <- function(id) {
         imap_dfr(., ~ mutate(.x, temperature = .y))
 
       p <- ggplot() +
-        geom_point(aes(x = time, y = logN), data = my_data(),
+        geom_point(aes(x = time, y = logN), data = na.omit(my_data()),
                    colour = input$pointcol,
                    size = input$pointsize,
                    shape = input$pointshape) +
