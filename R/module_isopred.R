@@ -52,7 +52,8 @@ isopred_module_ui <- function(id) {
                # ),
                pickerInput(NS(id, "model"), "Model",
                            choices = c("Bigelow", "Mafart", "Peleg", "Metselaar",
-                                       "Geeraerd", "Trilinear")
+                                       "Geeraerd", "Trilinear",
+                                       "Weibull_2phase", "Geeraerd")
                ),
                uiOutput(NS(id, "parameters")),
                numericInput(NS(id, "max_time"), "Treatment time (min)", 10, min = 0),
@@ -292,7 +293,8 @@ isopred_module_server <- function(id) {
       Peleg = c("b", "n", "logN0"),
       Metselaar = c("D", "p", "Delta", "logN0"),
       Geeraerd = c("SL", "D", "logNres", "logN0"),
-      Trilinear = c("SL", "D", "logNres", "logN0")
+      Trilinear = c("SL", "D", "logNres", "logN0"),
+      Weibull_2phase = c("logN0", "delta1", "p1", "delta2", "p2", "alpha")
     )
 
     par_map <- tribble(
@@ -305,7 +307,12 @@ isopred_module_server <- function(id) {
       "logN0", "logN0 (log CFU/g)", 8, FALSE,
       "b", "b", .1, FALSE,
       "SL", "Shoulder length (min)", 5, FALSE,
-      "logNres", "Tail height (log CFU/g)", 1, FALSE
+      "logNres", "Tail height (log CFU/g)", 1, FALSE,
+      "delta1", "delta-value of pop. 1 (min)", 2, FALSE,
+      "delta2", "delta-value of pop. 2 (min)", 4, FALSE,
+      "p1", "p-value of pop. 1 (·)", 1, FALSE,
+      "p2", "p-value of pop. 2 (·)", .8, FALSE,
+      "alpha", "logit population ratio (log f/(f-1))", .99, FALSE
 
     )
 
@@ -376,6 +383,20 @@ isopred_module_server <- function(id) {
         p <- as.list(p)
 
         p$logN0 - p$Delta*(t/p$Delta/p$D)^p$p
+
+      },
+
+      Weibull_2phase = function(p, t) {
+
+        p <- as.list(p)
+
+        N0 <- 10^p$logN0
+
+        part1 <- 10^(- (t/p$delta1)^p$p1 + p$alpha )
+        part2 <- 10^(- (t/p$delta2)^p$p2)
+        N <- N0/(1 + 10^p$alpha)*(part1 + part2)
+
+        log10(N)
 
       },
 
