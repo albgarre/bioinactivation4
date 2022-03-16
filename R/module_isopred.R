@@ -51,7 +51,7 @@ isopred_module_ui <- function(id) {
                #                             style = "material-flat")
                # ),
                pickerInput(NS(id, "model"), "Model",
-                           choices = c("Bigelow", "Mafart", "Peleg", # "Metselaar",
+                           choices = c("Bigelow", "Mafart", "Peleg", "Metselaar",
                                        "Geeraerd", "Trilinear")
                ),
                uiOutput(NS(id, "parameters")),
@@ -371,13 +371,14 @@ isopred_module_server <- function(id) {
 
       },
 
-      # Metselaar = function(p, t) {
-      #
-      #   p <- as.list(p)
-      #
-      #   p$logN0 - p$Delta*(t/p$Delta/p$D)^p$p
-      #
-      # }
+      Metselaar = function(p, t) {
+
+        p <- as.list(p)
+
+        p$logN0 - p$Delta*(t/p$Delta/p$D)^p$p
+
+      },
+
       Trilinear = function(p, t) {
         p <- as.list(p)
 
