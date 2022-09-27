@@ -47,7 +47,8 @@ primary_module_ui <- function(id) {
                pickerInput(NS(id, "model"), "Model",
                            choices = c("Bigelow", "Mafart", "Peleg", "Metselaar",
                                        "Geeraerd", "Trilinear",
-                                       "Weibull_2phase"
+                                       "Weibull_2phase",
+                                       "Geeraerd_noShoulder", "Geeraerd_noTail"
                                        )
                            ),
                uiOutput(NS(id, "parameters"))
@@ -586,6 +587,8 @@ primary_module_server <- function(id) {
       Peleg = c("b", "n", "logN0"),
       Metselaar = c("D", "p", "Delta", "logN0"),
       Geeraerd = c("SL", "D", "logNres", "logN0"),
+      Geeraerd_noShoulder = c("D", "logNres", "logN0"),
+      Geeraerd_noTail = c("SL", "D", "logN0"),
       Trilinear = c("SL", "D", "logNres", "logN0"),
       Weibull_2phase = c("logN0", "delta1", "p1", "delta2", "p2", "alpha")
     )
@@ -664,7 +667,29 @@ primary_module_server <- function(id) {
 
         k <- log(10)/p$D
 
-        p$logNres + log10(( (10^(p$logN0-p$logNres)-1)*exp(k*p$SL) )/(exp(k*t) + exp(k*p$SL) - 1) + 1)
+        p$logNres + log10(( (10^(p$logN0 - p$logNres) - 1)*exp(k*p$SL) )/(exp(k*t) + exp(k*p$SL) - 1) + 1)
+
+      },
+
+      Geeraerd_noTail = function(p, t) {
+
+        p <- as.list(p)
+
+        k <- log(10)/p$D
+
+        N <- 10^p$logN0 * exp(-k*t) * exp(k*p$SL) / ( 1 + ( exp(k*p$SL) - 1 )*exp(-k*t) )
+
+        log10(N)
+
+      },
+
+      Geeraerd_noShoulder = function(p, t) {
+
+        p <- as.list(p)
+
+        k <- log(10)/p$D
+
+        p$logNres + log10(( (10^(p$logN0 - p$logNres) - 1))/(exp(k*t)) + 1)
 
       },
 
@@ -690,8 +715,8 @@ primary_module_server <- function(id) {
 
         N0 <- 10^p$logN0
 
-        part1 <- 10^(- (t/p$delta1)^p$p1 + p$alpha )
-        part2 <- 10^(- (t/p$delta2)^p$p2)
+        part1 <- 10^(-(t/p$delta1)^p$p1 + p$alpha )
+        part2 <- 10^(-(t/p$delta2)^p$p2)
         N <- N0/(1 + 10^p$alpha)*(part1 + part2)
 
         log10(N)
