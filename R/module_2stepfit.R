@@ -51,7 +51,9 @@ fit2step_module_ui <- function(id) {
                fluidRow(
                  column(12,
                         pickerInput(NS(id, "model"), "Model",
-                                    choices = c("Bigelow", "Mafart", "Peleg", "Geeraerd"),
+                                    choices = c("Bigelow", "Mafart", "Peleg", "Geeraerd"
+                                                # "Trilinear", "Metselaar"
+                                                ),
                                     selected = "Bigelow"
                         )
                  )
@@ -184,9 +186,9 @@ fit2step_module_server <- function(id) {
       Bigelow =  c("D", "logN0"),
       Mafart = c("delta", "p", "logN0"),
       Peleg = c("b", "n", "logN0"),
-      # Metselaar = c("D", "p", "Delta", "logN0"),
-      Geeraerd = c("SL", "D", "logNres", "logN0")
-      # Trilinear = c("SL", "D", "logNres", "logN0")
+      Metselaar = c("D", "p", "Delta", "logN0"),
+      Geeraerd = c("SL", "D", "logNres", "logN0"),
+      Trilinear = c("SL", "D", "logNres", "logN0")
     )
 
     prediction_map <- list(
@@ -225,13 +227,14 @@ fit2step_module_server <- function(id) {
 
       },
 
-      # Metselaar = function(p, t) {
-      #
-      #   p <- as.list(p)
-      #
-      #   p$logN0 - p$Delta*(t/p$Delta/p$D)^p$p
-      #
-      # }
+      Metselaar = function(p, t) {
+
+        p <- as.list(p)
+
+        p$logN0 - p$Delta*(t/p$Delta/p$D)^p$p
+
+      },
+
       Trilinear = function(p, t) {
         p <- as.list(p)
 
@@ -368,6 +371,8 @@ fit2step_module_server <- function(id) {
 
     observeEvent(input$fit_secondary, {
 
+      # browser()
+
       p <- primary_pars() %>% mutate(temperature = as.numeric(temperature))
       Tref <- input$Tref
 
@@ -376,24 +381,41 @@ fit2step_module_server <- function(id) {
       if (is.null(p)) return(NULL)
 
       out <- if (input$model == "Peleg") {
+
+        Tc_guess <- min(p$temperature, na.rm = TRUE)
+        k_guess <- coef(lm(b ~ temperature, data = p))[[2]]
+
         nls(b ~ log(1 + exp(k*(temperature - Tc))),
             data = p,
-            start = list(Tc = 100, k = 1),
+            start = list(Tc = Tc_guess, k = k_guess),
             control = list(warnOnly = TRUE),
             model = TRUE
             )
       } else if (input$model == "Mafart") {
+
+        my_lm <- lm(log10(delta) ~ temperature, data = p)
+        guess_logdelta <- predict(my_lm, newdata = tibble(temperature = Tref))[[1]]
+        guess_zeta <- -1/coef(my_lm)[[2]]
+
+
         nls(log_delta ~ log_deltaref - (temperature - Tref)/z,
             data = p %>% mutate(log_delta = log10(delta)),
-            start = list(log_deltaref = 1, z = 5),
+            start = list(log_deltaref = guess_logdelta,
+                         z = guess_zeta),
             control = list(warnOnly = TRUE),
             model = TRUE
         )
 
       } else {
+
+        my_lm <- lm(log10(D) ~ temperature, data = p)
+        guess_logD <- predict(my_lm, newdata = tibble(temperature = Tref))[[1]]
+        guess_zeta <- -1/coef(my_lm)[[2]]
+
         nls(logD ~ logDref - (temperature - Tref)/z,
             data = p %>% mutate(logD = log10(D)),
-            start = list(logDref = 1, z = 5),
+            start = list(logDref = guess_logD,
+                         z = guess_zeta),
             control = list(warnOnly = TRUE),
             model = TRUE
             )
