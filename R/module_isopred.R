@@ -53,7 +53,7 @@ isopred_module_ui <- function(id) {
                pickerInput(NS(id, "model"), "Model",
                            choices = c("Bigelow", "Mafart", "Peleg", "Metselaar",
                                        "Geeraerd", "Trilinear",
-                                       "Weibull_2phase", "Geeraerd")
+                                       "Weibull_2phase")
                ),
                uiOutput(NS(id, "parameters")),
                numericInput(NS(id, "max_time"), "Treatment time (min)", 10, min = 0),
