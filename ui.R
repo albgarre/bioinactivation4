@@ -26,7 +26,7 @@ ui <- bs4DashPage(
       href = "https://github.com/albgarre/bioinactivation4",
       target = "_blank", "@AlbertoGarre"
     ),
-    right = "beta version - August 2021"
+    right = "alpha version - March 2022"
   ),
   sidebar = dashboardSidebar(
     # sidebarUserPanel(
@@ -175,6 +175,14 @@ ui <- bs4DashPage(
                  )
           )
         ),
+        # fluidRow(
+        #     bs4Callout(
+        #       title = "Want to see a demonstration?",
+        #       status = "success",
+        #       p("We will present bioinactivation & biogrowth in a free webinar organized by the International Association of Food Protection."),
+        #       a("Registration here", href = "https://www.foodprotection.org/events-meetings/webinars/software-fair-series-part-1-bioinactivation-biogrowth/")
+        #     )
+        # ),
         fluidRow(
           column(6,
                  carousel(

@@ -48,7 +48,9 @@ primary_module_ui <- function(id) {
                            choices = c("Bigelow", "Mafart", "Peleg", "Metselaar",
                                        "Geeraerd", "Trilinear",
                                        "Weibull_2phase",
-                                       "Geeraerd_noShoulder", "Geeraerd_noTail"
+                                       "Geeraerd_noShoulder", "Geeraerd_noTail",
+                                       "Geeraerd_k",
+                                       "Geeraerd_noShoulder_k", "Geeraerd_noTail_k"
                                        )
                            ),
                uiOutput(NS(id, "parameters"))
@@ -589,6 +591,9 @@ primary_module_server <- function(id) {
       Geeraerd = c("SL", "D", "logNres", "logN0"),
       Geeraerd_noShoulder = c("D", "logNres", "logN0"),
       Geeraerd_noTail = c("SL", "D", "logN0"),
+      Geeraerd_k = c("SL", "k", "logNres", "logN0"),
+      Geeraerd_noShoulder_k = c("k", "logNres", "logN0"),
+      Geeraerd_noTail_k = c("SL", "k", "logN0"),
       Trilinear = c("SL", "D", "logNres", "logN0"),
       Weibull_2phase = c("logN0", "delta1", "p1", "delta2", "p2", "alpha")
     )
@@ -596,6 +601,7 @@ primary_module_server <- function(id) {
     par_map <- tribble(
       ~par, ~label, ~value, ~fixed,
       "D", "D-value (min)", 2, FALSE,
+      "k", "Inactivation rate (1/min)", 1/2, FALSE,
       "delta", "delta-value (min)", 2, FALSE,
       "p", "p-value (·)", 1, FALSE,
       "n", "n (·)", 1, FALSE,
@@ -671,6 +677,16 @@ primary_module_server <- function(id) {
 
       },
 
+      Geeraerd_k = function(p, t) {
+
+        p <- as.list(p)
+
+        k <- p$k
+
+        p$logNres + log10(( (10^(p$logN0 - p$logNres) - 1)*exp(k*p$SL) )/(exp(k*t) + exp(k*p$SL) - 1) + 1)
+
+      },
+
       Geeraerd_noTail = function(p, t) {
 
         p <- as.list(p)
@@ -688,6 +704,28 @@ primary_module_server <- function(id) {
         p <- as.list(p)
 
         k <- log(10)/p$D
+
+        p$logNres + log10(( (10^(p$logN0 - p$logNres) - 1))/(exp(k*t)) + 1)
+
+      },
+
+      Geeraerd_noTail_k = function(p, t) {
+
+        p <- as.list(p)
+
+        k <- p$k
+
+        N <- 10^p$logN0 * exp(-k*t) * exp(k*p$SL) / ( 1 + ( exp(k*p$SL) - 1 )*exp(-k*t) )
+
+        log10(N)
+
+      },
+
+      Geeraerd_noShoulder_k = function(p, t) {
+
+        p <- as.list(p)
+
+        k <- p$k
 
         p$logNres + log10(( (10^(p$logN0 - p$logNres) - 1))/(exp(k*t)) + 1)
 
