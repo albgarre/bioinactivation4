@@ -113,6 +113,50 @@ fit1step_module_ui <- function(id) {
              )
 
     )
+    # fluidRow(
+    #   column(6,
+    #          bs4TabCard(
+    #            type = "tabs",
+    #            solidHeader = FALSE,
+    #            headerBorder = TRUE,
+    #            title = "Export as FSK-ML", status = "danger",
+    #            width = 12,
+    #            collapsible = TRUE,
+    #            # tabsetPanel(
+    #              tabPanel("General Information",
+    #                       textInput(NS(id, "fsk_name"), "Model name"),
+    #                       textInput(NS(id, "fsk_source"), "Source"),
+    #                       textInput(NS(id, "fsk_identifier"), "Identifier"),
+    #                       dateInput(NS(id, "fsk_date"), "Creation Date"),
+    #                       textInput(NS(id, "fsk_rights"), "Rights", value = "Creative Commons Attribution-NonCommercial 4.0"),
+    #                       textInput(NS(id, "fsk_language"), "Language", value = "English"),
+    #                       tags$h4("Creators"),
+    #                       rHandsontableOutput(NS(id, "fsk_pred_creators")),
+    #                       tags$h4("Authors"),
+    #                       rHandsontableOutput(NS(id, "fsk_pred_authors")),
+    #                       tags$h4("Reference"),
+    #                       rHandsontableOutput(NS(id, "fsk_pred_reference"))
+    #              ),
+    #              tabPanel("Scope",
+    #                       textInput(NS(id, "fsk_genCom"), "General comment"),
+    #                       tags$h4("Product/Matrix"),
+    #                       rHandsontableOutput(NS(id, "fsk_pred_product")),
+    #                       tags$h4("Hazard"),
+    #                       rHandsontableOutput(NS(id, "fsk_pred_hazard"))
+    #              ),
+    #              tabPanel("Data background",
+    #                       textInput(NS(id, "fsk_studyTitle"), "Study title")
+    #              ),
+    #              tabPanel("Model math",
+    #                       rHandsontableOutput(NS(id, "fsk_pred_model"))
+    #              ),
+    #              tabPanel("Export",
+    #                       downloadButton(NS(id, "fsk_download"), "Download")
+    #              )
+    #            # )
+    #          )
+    #          )
+    # )
   )
 
 }
@@ -285,6 +329,202 @@ fit1step_module_server <- function(id) {
       }
 
     })
+
+    ## FSK-ML ------------------------------------------------------------------
+
+    output$fsk_pred_creators <- renderRHandsontable({
+      # rhandsontable(data.frame(Email = c("google@chucknorris.com", NA), `Family name` = c("Doe", NA), `Given Name` = c("Jon", NA)),
+      #               rowHeaders = NULL, readOnly = FALSE
+      #               )
+
+      default_data <- data.frame(
+        title = "",
+        familyName = "",
+        givenName = "",
+        email = "",
+        telephone = "",
+        streetAdress = "",
+        country = "",
+        city = "",
+        region = "",
+        organization = ""
+      )
+
+      if (!is.null(input$fsk_pred_creators)) {
+        DF = hot_to_r(input$fsk_pred_creators)
+      } else {
+        DF = default_data
+      }
+
+      DF %>%
+        rhandsontable() %>%
+        hot_table(highlightCol = TRUE, highlightRow = TRUE)
+    })
+
+    output$fsk_pred_authors <- renderRHandsontable({
+
+      default_data <- data.frame(
+        title = "",
+        familyName = "",
+        givenName = "",
+        email = "",
+        telephone = "",
+        streetAdress = "",
+        country = "",
+        city = "",
+        region = "",
+        organization = ""
+      )
+
+      if (!is.null(input$fsk_pred_authors)) {
+        DF = hot_to_r(input$fsk_pred_authors)
+      } else {
+        DF = default_data
+      }
+
+      DF %>%
+        rhandsontable() %>%
+        hot_table(highlightCol = TRUE, highlightRow = TRUE)
+    })
+
+    output$fsk_pred_reference <- renderRHandsontable({
+
+      default_data <- data.frame(
+        publicationType = "",
+        publicationDate = "",
+        doi = "",
+        authorList = "",
+        publicationTitle = "",
+        publicationAbstract = "",
+        publicationStatus = "",
+        publicationWebsite = "",
+        comment = ""
+      )
+
+      if (!is.null(input$fsk_pred_reference)) {
+        DF = hot_to_r(input$fsk_pred_reference)
+      } else {
+        DF = default_data
+      }
+
+      DF %>%
+        rhandsontable() %>%
+        hot_table(highlightCol = TRUE, highlightRow = TRUE)
+    })
+
+    output$fsk_pred_product <- renderRHandsontable({
+
+      default_data <- data.frame(
+        productName = "",
+        productDescription = "",
+        productUnit = "",
+        productionMethod = "",
+        packaging = "",
+        productTreatment = "",
+        originCountry = "",
+        originArea = "",
+        fisheriesArea = "",
+        productionDate = "",
+        expiryDate = ""
+      )
+
+      if (!is.null(input$fsk_pred_product)) {
+        DF = hot_to_r(input$fsk_pred_product)
+      } else {
+        DF = default_data
+      }
+
+      DF %>%
+        rhandsontable() %>%
+        hot_table(highlightCol = TRUE, highlightRow = TRUE)
+    })
+
+    output$fsk_pred_hazard <- renderRHandsontable({
+
+      default_data <- data.frame(
+        hazardType = "",
+        hazardName = "",
+        hazardDescription = "",
+        hazardUnit = "",
+        adverseEffect = "",
+        sourceOfContamination = "",
+        maximumResidueLimit = "",
+        noObservedAdverseAffectLevel = "",
+        lowestObservedAdverseAffectLevel = "",
+        acceptableOperatorExposureLevel = "",
+        acuteReferenceDose = "",
+        acceptableDailyIntake = ""
+      )
+
+      if (!is.null(input$fsk_pred_hazard)) {
+        DF = hot_to_r(input$fsk_pred_hazard)
+      } else {
+        DF = default_data
+      }
+
+      DF %>%
+        rhandsontable() %>%
+        hot_table(highlightCol = TRUE, highlightRow = TRUE)
+    })
+
+    output$fsk_pred_model <- renderRHandsontable({
+
+      # browser()
+
+
+
+      my_model <- my_fit()
+
+      out <- data.frame(parameter = names(my_model$parameters),
+                        estimate = unlist(my_model$parameters),
+                        unit = "",
+                        `Min value` = 0,
+                        `Max value` = "") %>%
+        left_join(.,
+                  tibble(
+                    parameter = c("temp_ref", "D_R", "z", "N0", "delta_ref", "p", "n", "k_b", "temp_crit", "N_min", "C_c0",
+                                  "k_ref", "Ea"),
+                    description = c("Reference temperature.", "Treatment time required for one log-reduction.",
+                                    "Temperature increase required to reduce the D (or delta) value a 90%.",
+                                    "Initial microbial count",
+                                    "Treatment time required for the 1st log reduction.",
+                                    "Shape factor of the Weibull distribution",
+                                    "Shape factor of the Weibull distribution",
+                                    "Slope of the b vs temperature curve for temperatures about the critical one",
+                                    "Critical temperature for inactivation.",
+                                    "Tail height.",
+                                    "Initial value of the ideal substance defining the shoulder.",
+                                    "Inactivation rate at the reference temperature",
+                                    "Activation energy")
+                  ),
+                  by = "parameter")
+
+      rhandsontable(out,
+                    rowHeaders = NULL, readOnly = FALSE
+      )
+    })
+
+    output$fsk_iso_model <- renderRHandsontable({
+      my_model <- iso_fitted_model()
+
+      out <- data.frame(parameter = names(my_model$parameters),
+                        estimate = unlist(my_model$parameters),
+                        unit = "",
+                        `Min value` = 0,
+                        `Max value` = "") %>%
+        left_join(., par_description_map, by = "parameter")
+
+      rhandsontable(out,
+                    rowHeaders = NULL, readOnly = FALSE
+      )
+    })
+
+    output$fsk_download <- downloadHandler(
+      filename = "fitted_model.fskx",
+      content = function(file) {
+        file.copy("fitted_model.fskx", file)
+      }
+    )
 
   })
 

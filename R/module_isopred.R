@@ -53,7 +53,10 @@ isopred_module_ui <- function(id) {
                pickerInput(NS(id, "model"), "Model",
                            choices = c("Bigelow", "Mafart", "Peleg", "Metselaar",
                                        "Geeraerd", "Trilinear",
-                                       "Weibull_2phase")
+                                       "Weibull_2phase",
+                                       "Cerf", "Cerf_repar",
+                                       "Bigelow_transition"
+                                       )
                ),
                uiOutput(NS(id, "parameters")),
                numericInput(NS(id, "max_time"), "Treatment time (min)", 10, min = 0),
@@ -294,7 +297,10 @@ isopred_module_server <- function(id) {
       Metselaar = c("D", "p", "Delta", "logN0"),
       Geeraerd = c("SL", "D", "logNres", "logN0"),
       Trilinear = c("SL", "D", "logNres", "logN0"),
-      Weibull_2phase = c("logN0", "delta1", "p1", "delta2", "p2", "alpha")
+      Weibull_2phase = c("logN0", "delta1", "p1", "delta2", "p2", "alpha"),
+      Cerf = c("logN0", "f", "Dsens", "Dres"),
+      Cerf_repar = c("logN0", "logf", "Dsens", "Dres"),
+      Bigelow_transition = c("logN0", "D1", "D2", "tcrit")
     )
 
     par_map <- tribble(
@@ -312,8 +318,14 @@ isopred_module_server <- function(id) {
       "delta2", "delta-value of pop. 2 (min)", 4, FALSE,
       "p1", "p-value of pop. 1 (·)", 1, FALSE,
       "p2", "p-value of pop. 2 (·)", .8, FALSE,
-      "alpha", "logit population ratio (log f/(f-1))", .99, FALSE
-
+      "alpha", "logit population ratio (log f/(f-1))", .99, FALSE,
+      "f", "Proportion of resistant sub-population", .1, FALSE,
+      "Dsens", "D-value of the sensitive sub-population", .1, FALSE,
+      "Dres", "D-value of the resistant sub-population", 1, FALSE,
+      "logf", "Log10 of the proportion of resistant sub-population", -1, FALSE,
+      "D1", "Initial D-value", 1, FALSE,
+      "D2", "D-value after transition", 5, FALSE,
+      "tcrit", "Transition time", 2, FALSE
     )
 
     make_input <- function(par_name) {
@@ -349,6 +361,18 @@ isopred_module_server <- function(id) {
         p <- as.list(p)
 
         p$logN0 - t/p$D
+
+      },
+
+      Bigelow_transition = function(p, t) {
+
+        p <- as.list(p)
+        logN_crit <- p$logN0 - p$tcrit/p$D1
+
+        ifelse(t < p$tcrit,
+               p$logN0 - t/p$D1,
+               logN_crit - (t - p$tcrit)/p$D2
+        )
 
       },
 
@@ -407,6 +431,22 @@ isopred_module_server <- function(id) {
           mutate(logN = ifelse(t < p$SL, p$logN0, logN),
                  logN = ifelse(logN < p$logNres, p$logNres, logN)) %>%
           pull(logN)
+      },
+
+      Cerf = function(p, t) {
+        p <- as.list(p)
+
+        p$logN0 + log10( (1-p$f)*10^(-t/p$Dsens) + p$f*10^(-t/p$Dres) )
+
+
+      },
+      Cerf_repar = function(p, t) {
+        p <- as.list(p)
+        f <- 10^p$logf
+
+        p$logN0 + log10( (1-f)*10^(-t/p$Dsens) + f*10^(-t/p$Dres) )
+
+
       }
 
     )

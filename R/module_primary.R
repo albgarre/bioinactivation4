@@ -50,7 +50,9 @@ primary_module_ui <- function(id) {
                                        "Weibull_2phase",
                                        "Geeraerd_noShoulder", "Geeraerd_noTail",
                                        "Geeraerd_k",
-                                       "Geeraerd_noShoulder_k", "Geeraerd_noTail_k"
+                                       "Geeraerd_noShoulder_k", "Geeraerd_noTail_k",
+                                       "Cerf", "Cerf_repar",
+                                       "Bigelow_transition"
                                        )
                            ),
                uiOutput(NS(id, "parameters"))
@@ -595,7 +597,10 @@ primary_module_server <- function(id) {
       Geeraerd_noShoulder_k = c("k", "logNres", "logN0"),
       Geeraerd_noTail_k = c("SL", "k", "logN0"),
       Trilinear = c("SL", "D", "logNres", "logN0"),
-      Weibull_2phase = c("logN0", "delta1", "p1", "delta2", "p2", "alpha")
+      Weibull_2phase = c("logN0", "delta1", "p1", "delta2", "p2", "alpha"),
+      Cerf = c("logN0", "f", "Dsens", "Dres"),
+      Cerf_repar = c("logN0", "logf", "Dsens", "Dres"),
+      Bigelow_transition = c("logN0", "D1", "D2", "tcrit")
     )
 
     par_map <- tribble(
@@ -614,7 +619,14 @@ primary_module_server <- function(id) {
       "delta2", "delta-value of pop. 2 (min)", 4, FALSE,
       "p1", "p-value of pop. 1 (·)", 1, FALSE,
       "p2", "p-value of pop. 2 (·)", .8, FALSE,
-      "alpha", "logit population ratio (log f/(f-1))", .99, FALSE
+      "alpha", "logit population ratio (log f/(f-1))", .99, FALSE,
+      "f", "Proportion of resistant sub-population", .1, FALSE,
+      "Dsens", "D-value of the sensitive sub-population", .1, FALSE,
+      "Dres", "D-value of the resistant sub-population", 1, FALSE,
+      "logf", "Log10 of the proportion of resistant sub-population", -1, FALSE,
+      "D1", "Initial D-value", 1, FALSE,
+      "D2", "D-value after transition", 5, FALSE,
+      "tcrit", "Transition time", 2, FALSE
 
     )
 
@@ -656,6 +668,18 @@ primary_module_server <- function(id) {
         p <- as.list(p)
 
         p$logN0 - t/p$D
+
+      },
+
+      Bigelow_transition = function(p, t) {
+
+        p <- as.list(p)
+        logN_crit <- p$logN0 - p$tcrit/p$D1
+
+        ifelse(t < p$tcrit,
+               p$logN0 - t/p$D1,
+               logN_crit - (t - p$tcrit)/p$D2
+        )
 
       },
 
@@ -768,6 +792,22 @@ primary_module_server <- function(id) {
           mutate(logN = ifelse(t < p$SL, p$logN0, logN),
                  logN = ifelse(logN < p$logNres, p$logNres, logN)) %>%
           pull(logN)
+      },
+
+      Cerf = function(p, t) {
+        p <- as.list(p)
+
+        p$logN0 + log10( (1-p$f)*10^(-t/p$Dsens) + p$f*10^(-t/p$Dres) )
+
+
+      },
+      Cerf_repar = function(p, t) {
+        p <- as.list(p)
+        f <- 10^p$logf
+
+        p$logN0 + log10( (1-f)*10^(-t/p$Dsens) + f*10^(-t/p$Dres) )
+
+
       }
 
     )
@@ -780,8 +820,6 @@ primary_module_server <- function(id) {
       res
 
     }
-
-    # get_residuals(c(D = 5), data = d, "Bigelow", c(logN0 = 6))
 
     my_fit <- reactiveVal()
 
